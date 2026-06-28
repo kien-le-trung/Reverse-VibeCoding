@@ -1,0 +1,12 @@
+id: vue_nodejs
+type: wiring
+stacks:
+  - nodejs
+  - vue
+requires:
+  backend: nodejs
+  frontend: vue
+conflicts: []
+student_visible: true
+files:
+  - files

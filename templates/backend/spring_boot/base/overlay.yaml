@@ -1,0 +1,10 @@
+id: spring_boot_base
+type: stack_base
+stacks:
+  - spring_boot
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files:
+  - files/backend
+checks: []

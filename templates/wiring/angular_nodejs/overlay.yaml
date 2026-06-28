@@ -1,0 +1,12 @@
+id: angular_nodejs
+type: wiring
+stacks:
+  - nodejs
+  - angular
+requires:
+  backend: nodejs
+  frontend: angular
+conflicts: []
+student_visible: true
+files:
+  - files

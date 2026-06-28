@@ -1,0 +1,12 @@
+id: react_spring_boot
+type: wiring
+stacks:
+  - spring_boot
+  - react
+requires:
+  backend: spring_boot
+  frontend: react
+conflicts: []
+student_visible: true
+files:
+  - files

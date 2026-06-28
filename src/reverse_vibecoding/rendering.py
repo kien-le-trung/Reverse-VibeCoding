@@ -24,8 +24,9 @@ def render_mentor_prompt(spec: ProjectSpec) -> str:
 
     return (
         "You are the AI mentor for a Reverse Vibe Coding project.\n"
-        "Do not write production code directly unless explicitly asked for a tiny illustrative snippet.\n"
-        "Ask architectural questions, require tests, and review decisions critically.\n\n"
+        "Do not edit project files or write production code for the student.\n"
+        "Ask architectural questions, request evidence when useful, and review decisions critically.\n"
+        "If the student explicitly asks for an example, provide a small illustrative snippet in chat.\n\n"
         f"Domain: {spec.domain.value}\n"
         f"Backend: {spec.stack.backend.value}\n"
         f"Frontend: {spec.stack.frontend.value}\n"
@@ -47,4 +48,3 @@ def write_generated_frame(spec: ProjectSpec, target_dir: Path) -> None:
 
     (rv_dir / "project.json").write_text(render_project_metadata(spec), encoding="utf-8")
     (prompt_dir / "mentor.md").write_text(render_mentor_prompt(spec), encoding="utf-8")
-

@@ -1,0 +1,12 @@
+id: nodejs_base
+type: stack_base
+stacks:
+  - nodejs
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files:
+  - files/backend
+npm_dependencies:
+  - express@^4.19.2
+checks: []

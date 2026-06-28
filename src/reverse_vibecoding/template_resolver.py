@@ -16,7 +16,49 @@ LEVEL_ORDER: dict[str, tuple[str, ...]] = {
         "level_3",
         "level_4",
     ),
+    "nodejs": (
+        "level_1",
+        "level_2",
+        "level_3",
+        "level_4",
+    ),
+    "flask": (
+        "level_1",
+        "level_2",
+        "level_3",
+        "level_4",
+    ),
+    "django": (
+        "level_1",
+        "level_2",
+        "level_3",
+        "level_4",
+    ),
+    "spring_boot": (
+        "level_1",
+        "level_2",
+        "level_3",
+        "level_4",
+    ),
     "react_native": (
+        "level_1",
+        "level_2",
+        "level_3",
+        "level_4",
+    ),
+    "vue": (
+        "level_1",
+        "level_2",
+        "level_3",
+        "level_4",
+    ),
+    "react": (
+        "level_1",
+        "level_2",
+        "level_3",
+        "level_4",
+    ),
+    "angular": (
         "level_1",
         "level_2",
         "level_3",
@@ -26,7 +68,14 @@ LEVEL_ORDER: dict[str, tuple[str, ...]] = {
 
 BASE_BY_STACK: dict[str, str] = {
     "fastapi": "fastapi_base",
+    "nodejs": "nodejs_base",
+    "flask": "flask_base",
+    "django": "django_base",
+    "spring_boot": "spring_boot_base",
     "react_native": "react_native_base",
+    "vue": "vue_base",
+    "react": "react_base",
+    "angular": "angular_base",
 }
 
 

@@ -11,14 +11,11 @@
     ],
     "python_dependencies": [
       "fastapi>=0.115",
-      "uvicorn[standard]>=0.30",
-      "httpx>=0.27",
-      "pytest>=8"
+      "uvicorn[standard]>=0.30"
     ],
     "stack": "fastapi"
   },
   "checks": [
-    "python -m pytest",
     "npm test"
   ],
   "database": "sqlite",

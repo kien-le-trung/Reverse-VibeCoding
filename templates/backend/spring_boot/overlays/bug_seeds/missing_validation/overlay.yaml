@@ -1,0 +1,9 @@
+id: missing_validation
+type: bug_seed
+stacks:
+  - spring_boot
+requires:
+  min_level: level_2
+conflicts: []
+student_visible: true
+files: []

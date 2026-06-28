@@ -3,6 +3,7 @@
 This is a compact map of generated project files. Inspect files on demand instead of loading the whole project at once.
 
 - .env.example
+- .rv/progress/README.md
 - .rv/project.json
 - .rv/tasks/001_understand_repo.md
 - .rv/tasks/README.md
@@ -20,8 +21,6 @@ This is a compact map of generated project files. Inspect files on demand instea
 - backend/docs/domain.md
 - backend/pyproject.toml
 - backend/README.md
-- backend/tests/test_health.py
-- backend/tests/test_todos.py
 - mobile/app.json
 - mobile/App.tsx
 - mobile/package.json

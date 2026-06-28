@@ -25,8 +25,8 @@ class TemplateComposerTests(unittest.TestCase):
 
             self.assertEqual(result.applied_layers, ("fastapi_base", "level_2"))
             self.assertIn("include_router(todos_router)", main)
-            self.assertTrue((target / "backend/tests/test_health.py").exists())
-            self.assertTrue((target / "backend/tests/test_todos.py").exists())
+            self.assertFalse((target / "backend/tests/test_health.py").exists())
+            self.assertFalse((target / "backend/tests/test_todos.py").exists())
 
     def test_react_native_level_overwrites_base_tree(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

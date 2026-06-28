@@ -3,7 +3,12 @@ import typer
 
 from reverse_vibecoding.cli.helpers import InitProjectOptions, init_project
 
-app = typer.Typer(help="Reverse Vibe Coding project generator.")
+app = typer.Typer(help="Reverse Vibe Coding project generator.", no_args_is_help=True)
+
+
+@app.callback()
+def main() -> None:
+    """Reverse Vibe Coding project generator."""
 
 
 @app.command()
@@ -19,8 +24,16 @@ def init(
     sandbox_root: Path = typer.Option(Path("sandbox"), help="Generated project root directory. Do not change unless you know what you're doing."),
     force: bool = typer.Option(False, "--force", help="Allow overwriting of existing project. Use with caution."),
     setup_environment: bool = typer.Option(True, "--setup/--no-setup", help="Open a setup terminal after generation."),
+    bug_seed_count: int = typer.Option(0, "--bug-seed-count", min=0, help="Number of controlled bug seeds to apply. Default: 0 for a clean repo."),
+    bug_seed_random_seed: int | None = typer.Option(None, "--bug-seed-random-seed", help="Random seed for reproducible bug seed selection."),
+    bug_categories: list[str] | None = typer.Option(None, "--bug-category", help="Restrict bug seeds to a category. Can be passed multiple times."),
+    bug_hidden: bool = typer.Option(False, "--bug-hidden", help="Hide selected bug type and target details in hidden metadata."),
+    no_bugs: bool = typer.Option(False, "--no-bugs", help="Force a clean repo with no bug seeds."),
 ) -> None:
     """Generate a project into sandbox."""
+
+    if no_bugs:
+        bug_seed_count = 0
 
     try:
         result = init_project(
@@ -36,6 +49,10 @@ def init(
                 sandbox_root=sandbox_root,
                 force=force,
                 setup_environment=setup_environment,
+                bug_seed_count=bug_seed_count,
+                bug_seed_random_seed=bug_seed_random_seed,
+                bug_categories=tuple(bug_categories or ()),
+                bug_hidden=bug_hidden,
             ),
             progress=typer.echo,
         )
@@ -46,6 +63,15 @@ def init(
     typer.echo("Applied layers:")
     for layer_id in result.compose_result.applied_layers:
         typer.echo(f"  - {layer_id}")
+    if result.bug_seeds:
+        typer.echo(f"Applied bug seeds: {len(result.bug_seeds)}")
+        if bug_hidden:
+            typer.echo("  Details hidden. Inspect the generated project to identify the bugs.")
+        else:
+            for bug_seed in result.bug_seeds:
+                typer.echo(f"  - {bug_seed.id} ({bug_seed.category})")
+    else:
+        typer.echo("Applied bug seeds: 0 (clean repo)")
     handoff_path = (result.target / ".rv" / "agent_handoff.md").as_posix()
     short_handoff_path = (result.target / ".rv" / "agent_handoff_short.md").as_posix()
     typer.echo("[init:agent] To wake your IDE agent, paste this:")

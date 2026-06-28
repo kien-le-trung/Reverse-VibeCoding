@@ -1,0 +1,62 @@
+schema_name: reverse_vibecoding_task
+version: 1
+format: yaml_front_matter_markdown
+description: >
+  Schema for files in .rv/tasks/. Each task file should start with YAML
+  front matter that follows this schema, followed by optional Markdown notes.
+required_fields:
+  id:
+    type: string
+    description: Stable task id matching the file prefix, such as "002_add_feature".
+  title:
+    type: string
+    description: Short task title.
+  status:
+    type: enum
+    allowed_values:
+      - proposed
+      - active
+      - blocked
+      - review
+      - complete
+    description: Current task state.
+  goal:
+    type: string
+    description: One-sentence learning or implementation goal.
+  student_actions:
+    type: list[string]
+    description: Concrete actions the student should perform.
+  evidence_expected:
+    type: list[string]
+    description: Evidence the student should bring back, such as commands, files, screenshots, or test output.
+  mentor_review_focus:
+    type: list[string]
+    description: Review criteria the mentor should use when the student returns.
+recommended_fields:
+  prerequisites:
+    type: list[string]
+    description: Setup, concepts, or files the student should inspect first.
+  files_to_inspect:
+    type: list[string]
+    description: Project-relative files likely relevant to the task.
+  files_to_change:
+    type: list[string]
+    description: Project-relative files the student is expected to edit.
+  completion_check:
+    type: list[string]
+    description: Conditions that mean the task is done.
+example:
+  id: "002_add_feature"
+  title: "Add successful PATCH todo test"
+  status: active
+  goal: "Add API coverage for a successful todo title update."
+  student_actions:
+    - "Create a todo with TestClient."
+    - "Patch that todo's title."
+    - "Assert status 200 and updated response body."
+  evidence_expected:
+    - "Passing pytest output for backend/tests/test_todos.py."
+  mentor_review_focus:
+    - "Correct API behavior."
+    - "Test isolation."
+    - "Response shape and status code."

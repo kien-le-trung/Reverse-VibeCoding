@@ -24,11 +24,11 @@ Applied layers:
 - react_native_fastapi
 
 Suggested checks:
-- python -m pytest
 - npm test
 
 Important files:
 - .env.example
+- .rv/progress/README.md
 - .rv/project.json
 - .rv/tasks/001_understand_repo.md
 - .rv/tasks/README.md
@@ -46,11 +46,11 @@ Important files:
 - backend/docs/domain.md
 - backend/pyproject.toml
 - backend/README.md
-- backend/tests/test_health.py
-- backend/tests/test_todos.py
 - mobile/app.json
 - mobile/App.tsx
 - mobile/package.json
 - mobile/README.md
+- mobile/src/api/client.ts
+- mobile/src/env.d.ts
 
-Use this file as project context only. Generic mentor behavior lives in `.agents/prompts/mentor.md`.
+Use this file as project context only. Generic mentor behavior lives in `.agents/prompts/mentor.md`, and per-response guardrails live in `.agents/mentor_guardrails.md`.

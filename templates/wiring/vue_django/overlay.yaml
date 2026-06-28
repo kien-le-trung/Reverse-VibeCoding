@@ -1,0 +1,12 @@
+id: vue_django
+type: wiring
+stacks:
+  - django
+  - vue
+requires:
+  backend: django
+  frontend: vue
+conflicts: []
+student_visible: true
+files:
+  - files

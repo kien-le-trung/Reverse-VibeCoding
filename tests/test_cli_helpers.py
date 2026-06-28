@@ -25,9 +25,11 @@ class CliHelperTests(unittest.TestCase):
             self.assertTrue((result.target / "mobile/App.tsx").exists())
             self.assertTrue((result.target / ".rv/project.json").exists())
             self.assertTrue((result.target / ".rv/frontend_dependencies.json").exists())
+            self.assertFalse((result.target / ".rv/mentor_guardrails.md").exists())
             self.assertTrue((result.target / ".rv/agent_context.md").exists())
             self.assertTrue((result.target / ".rv/tasks/README.md").exists())
             self.assertTrue((result.target / ".rv/tasks/001_understand_repo.md").exists())
+            self.assertTrue((result.target / ".rv/progress/README.md").exists())
             self.assertTrue((result.target / ".rv/file_map.md").exists())
             self.assertTrue((result.target / ".rv/agent_handoff.md").exists())
             self.assertTrue((result.target / ".rv/agent_handoff_short.md").exists())
@@ -36,9 +38,15 @@ class CliHelperTests(unittest.TestCase):
             self.assertIn("fastapi>=0.115", (result.target / "requirements.txt").read_text())
             self.assertIn("Project: sample", (result.target / ".rv/agent_context.md").read_text())
             self.assertIn("Reverse Vibe Coding Mentor Prompt", (result.target / ".rv/agent_handoff.md").read_text())
+            self.assertIn("apply it before every response", (result.target / ".rv/agent_handoff.md").read_text())
+            self.assertIn(".agents/mentor_guardrails.md", (result.target / ".rv/agent_handoff.md").read_text())
+            self.assertIn(".agents/rubrics/engineering_review.md", (result.target / ".rv/agent_handoff.md").read_text())
+            self.assertIn(".agents/schemas/task.schema.yaml", (result.target / ".rv/agent_handoff.md").read_text())
+            self.assertIn(".agents/schemas/progress.schema.yaml", (result.target / ".rv/agent_handoff.md").read_text())
             self.assertIn("Task 001", (result.target / ".rv/agent_handoff.md").read_text())
             self.assertIn("Paste this into your IDE agent", (result.target / ".rv/agent_handoff_short.md").read_text())
             self.assertIn("Task 001", (result.target / ".rv/tasks/001_understand_repo.md").read_text())
+            self.assertIn("Learning Progress", (result.target / ".rv/progress/README.md").read_text())
             self.assertFalse(result.setup_terminal_launched)
 
     def test_init_project_rejects_existing_target_by_default(self) -> None:
@@ -73,6 +81,25 @@ class CliHelperTests(unittest.TestCase):
 
             self.assertIn('"stack": "fastapi"', metadata)
             self.assertIn('"stack": "react_native"', metadata)
+
+    def test_init_project_supports_additional_stack_templates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = init_project(
+                InitProjectOptions(
+                    name="sample",
+                    backend_stack="nodejs",
+                    frontend_stack="vue",
+                    templates_root=TEMPLATES,
+                    sandbox_root=Path(tmp),
+                    setup_environment=False,
+                )
+            )
+
+            self.assertTrue((result.target / "backend/src/main.js").exists())
+            self.assertTrue((result.target / "mobile/src/main.ts").exists())
+            self.assertIn("nodejs_base", result.compose_result.applied_layers)
+            self.assertIn("vue_base", result.compose_result.applied_layers)
+            self.assertIn("vue_nodejs", result.compose_result.applied_layers)
 
     def test_init_project_reports_progress(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,0 +1,14 @@
+id: level_2
+type: completeness_level
+stacks:
+  - angular
+requires: 
+  base: angular_base
+conflicts: []
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files: 
+  - files/mobile
+checks:
+  - npm test

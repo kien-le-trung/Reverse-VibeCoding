@@ -8,5 +8,4 @@ student_visible: true
 composition: copy_tree
 overwrites: allowed
 files: []
-checks:
-  - python -m pytest
+checks: []

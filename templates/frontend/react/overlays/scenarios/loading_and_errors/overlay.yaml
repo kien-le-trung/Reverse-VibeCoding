@@ -1,0 +1,9 @@
+id: loading_and_errors
+type: scenario
+stacks:
+  - react
+requires:
+  min_level: level_3
+conflicts: []
+student_visible: true
+files: []

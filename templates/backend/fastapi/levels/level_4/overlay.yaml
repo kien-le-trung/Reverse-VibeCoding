@@ -11,5 +11,4 @@ composition: copy_tree
 overwrites: allowed
 files:
   - files/backend
-checks:
-  - python -m pytest
+checks: []

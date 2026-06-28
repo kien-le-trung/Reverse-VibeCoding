@@ -1,0 +1,12 @@
+id: vue_spring_boot
+type: wiring
+stacks:
+  - spring_boot
+  - vue
+requires:
+  backend: spring_boot
+  frontend: vue
+conflicts: []
+student_visible: true
+files:
+  - files

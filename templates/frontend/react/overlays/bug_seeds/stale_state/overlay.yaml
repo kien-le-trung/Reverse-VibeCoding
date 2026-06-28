@@ -1,0 +1,9 @@
+id: stale_state
+type: bug_seed
+stacks:
+  - react
+requires:
+  min_level: level_2
+conflicts: []
+student_visible: true
+files: []

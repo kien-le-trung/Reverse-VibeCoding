@@ -1,0 +1,12 @@
+id: angular_spring_boot
+type: wiring
+stacks:
+  - spring_boot
+  - angular
+requires:
+  backend: spring_boot
+  frontend: angular
+conflicts: []
+student_visible: true
+files:
+  - files

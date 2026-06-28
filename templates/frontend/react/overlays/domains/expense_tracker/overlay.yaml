@@ -1,0 +1,9 @@
+id: expense_tracker
+type: domain
+stacks:
+  - react
+requires:
+  min_level: level_2
+conflicts: []
+student_visible: true
+files: []

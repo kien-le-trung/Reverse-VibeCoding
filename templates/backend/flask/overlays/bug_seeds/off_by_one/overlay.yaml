@@ -1,0 +1,9 @@
+id: off_by_one
+type: bug_seed
+stacks:
+  - flask
+requires:
+  min_level: level_2
+conflicts: []
+student_visible: true
+files: []

@@ -29,7 +29,7 @@ python -m unittest discover -s . -p "test*.py"
 After installing the project in editable mode, generate an MVP project with:
 
 ```bash
-rv init my_project
+rev-vib init my_project
 ```
 
 This composes FastAPI, React Native, SQLite, Todo App, and React Native/FastAPI wiring templates into:
@@ -41,10 +41,18 @@ sandbox/my_project/
 The defaults can be overridden:
 
 ```bash
-rv init my_project --backend-stack fastapi --frontend-stack react_native --backend-level level_3 --frontend-level level_3
+rev-vib init my_project --backend-stack fastapi --frontend-stack react_native --backend-level level_3 --frontend-level level_3
 ```
 
-During generation, `rv init` prints initialization progress, reads dependency declarations from stack YAML files, writes `requirements.txt`, and opens a setup terminal unless `--no-setup` is passed.
+During generation, `rev-vib init` prints initialization progress, reads dependency declarations from stack YAML files, writes `requirements.txt`, and opens a setup terminal unless `--no-setup` is passed.
+
+Generated projects are clean by default. To create a learning repo with controlled bug seeds, pass a bug count:
+
+```bash
+rev-vib init my_project --bug-seed-count 2 --bug-seed-random-seed 123
+```
+
+Use `--bug-category validation` to restrict bug selection, `--bug-hidden` to hide bug type and target details from generated metadata, or `--no-bugs` to force a clean repo even when other bug options are present.
 
 The setup terminal runs:
 
@@ -61,6 +69,7 @@ sandbox/my_project/.rv/agent_handoff.md
 sandbox/my_project/.rv/agent_context.md
 sandbox/my_project/.rv/tasks/001_understand_repo.md
 sandbox/my_project/.rv/tasks/README.md
+sandbox/my_project/.rv/progress/README.md
 sandbox/my_project/.rv/file_map.md
 sandbox/my_project/.rv/agent_handoff_short.md
 ```
@@ -77,12 +86,4 @@ For short-context or free-tier agents, paste this line:
 Read sandbox/my_project/.rv/agent_handoff_short.md
 ```
 
-Learning work is tracked in `.rv/tasks/`. The intended loop is: explain your repo understanding, refine it with the mentor, implement a focused change, ask for review, then record the next task.
-
-The generated backend has its own checks:
-
-```bash
-cd sandbox/mvp_todo_fullstack/backend
-python -m pip install -e ".[dev]"
-python -m pytest
-```
+Learning work is planned in `.rv/tasks/` and completed learning progress is recorded in `.rv/progress/`. The global `.agents/mentor_guardrails.md` file is automatically referenced by generated handoffs so the mentor is reminded before every response not to implement work for the student. Task and progress entries should use the YAML schemas in `.agents/schemas/`. The intended loop is: explain your repo understanding, refine it with the mentor, implement a focused change, ask for review, log what was learned, then record the next task.

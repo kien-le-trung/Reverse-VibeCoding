@@ -1,0 +1,9 @@
+id: todo_app
+type: domain
+stacks:
+  - angular
+requires:
+  min_level: level_2
+conflicts: []
+student_visible: true
+files: []

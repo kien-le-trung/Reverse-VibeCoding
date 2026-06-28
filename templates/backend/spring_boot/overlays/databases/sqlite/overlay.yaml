@@ -1,0 +1,11 @@
+id: sqlite
+type: database
+stacks:
+  - spring_boot
+requires:
+  min_level: level_3
+conflicts:
+  - postgresql_local
+  - postgresql_supabase
+student_visible: true
+files: []

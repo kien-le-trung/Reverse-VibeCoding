@@ -4,7 +4,7 @@ Starter code templates live here.
 
 Templates are designed around two ideas:
 
-1. A future `rv init` command will select a project combination and copy it into `sandbox/`.
+1. A future `rev-vib init` command will select a project combination and copy it into `sandbox/`.
 2. Templates should be reusable educational building blocks, not one-off generated projects.
 
 The current supported stacks are:
@@ -439,7 +439,7 @@ Useful fields:
 - `npm_dependencies`
 - `npm_dev_dependencies`
 
-Stack base manifests should declare their package dependencies. `rv init` uses these fields to create `requirements.txt`, initialize `.venv`, and record frontend dependency metadata.
+Stack base manifests should declare their package dependencies. `rev-vib init` uses these fields to create `requirements.txt`, initialize `.venv`, and record frontend dependency metadata.
 
 ## Overlay Layout
 

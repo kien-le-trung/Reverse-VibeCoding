@@ -1,0 +1,12 @@
+id: angular_django
+type: wiring
+stacks:
+  - django
+  - angular
+requires:
+  backend: django
+  frontend: angular
+conflicts: []
+student_visible: true
+files:
+  - files

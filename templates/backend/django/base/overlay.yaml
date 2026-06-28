@@ -1,0 +1,10 @@
+id: django_base
+type: stack_base
+stacks:
+  - django
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files:
+  - files/backend
+checks: []

@@ -1,0 +1,5 @@
+{
+  "scripts": {"start": "node src/main.js", "test": "node --test"},
+  "dependencies": {"express": "^4.19.2"},
+  "devDependencies": {}
+}

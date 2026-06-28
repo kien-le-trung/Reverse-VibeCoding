@@ -1,0 +1,12 @@
+id: react_nodejs
+type: wiring
+stacks:
+  - nodejs
+  - react
+requires:
+  backend: nodejs
+  frontend: react
+conflicts: []
+student_visible: true
+files:
+  - files

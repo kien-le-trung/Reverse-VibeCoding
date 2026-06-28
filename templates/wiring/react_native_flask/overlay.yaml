@@ -1,0 +1,12 @@
+id: react_native_flask
+type: wiring
+stacks:
+  - flask
+  - react_native
+requires:
+  backend: flask
+  frontend: react_native
+conflicts: []
+student_visible: true
+files:
+  - files

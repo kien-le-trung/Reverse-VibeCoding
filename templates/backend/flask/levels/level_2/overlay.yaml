@@ -1,0 +1,13 @@
+id: level_2
+type: completeness_level
+stacks:
+  - flask
+requires: 
+  base: flask_base
+conflicts: []
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files: 
+  - files/backend
+checks: []

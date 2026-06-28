@@ -1,0 +1,12 @@
+id: react_django
+type: wiring
+stacks:
+  - django
+  - react
+requires:
+  backend: django
+  frontend: react
+conflicts: []
+student_visible: true
+files:
+  - files

@@ -1,0 +1,9 @@
+id: auth
+type: scenario
+stacks:
+  - django
+requires:
+  min_level: level_3
+conflicts: []
+student_visible: true
+files: []

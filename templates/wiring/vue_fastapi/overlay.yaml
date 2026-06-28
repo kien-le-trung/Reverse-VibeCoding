@@ -1,0 +1,12 @@
+id: vue_fastapi
+type: wiring
+stacks:
+  - fastapi
+  - vue
+requires:
+  backend: fastapi
+  frontend: vue
+conflicts: []
+student_visible: true
+files:
+  - files

@@ -1,0 +1,61 @@
+schema_name: reverse_vibecoding_progress
+version: 1
+format: yaml_front_matter_markdown
+description: >
+  Schema for files in .rv/progress/. Each progress file should start with YAML
+  front matter that follows this schema, followed by optional Markdown reflection.
+required_fields:
+  id:
+    type: string
+    description: Stable progress id matching the related task id, such as "002_add_feature".
+  task_id:
+    type: string
+    description: Id of the task this progress entry summarizes.
+  status:
+    type: enum
+    allowed_values:
+      - reviewed
+      - needs_revision
+      - complete
+    description: Outcome after mentor review.
+  completed_summary:
+    type: string
+    description: What the student built or investigated.
+  expected_understanding:
+    type: list[string]
+    description: Concepts the student is expected to understand after the task.
+  concepts_taught:
+    type: list[string]
+    description: Concepts taught or reinforced by the task.
+  evidence_reviewed:
+    type: list[string]
+    description: Files, commands, screenshots, tests, or explanations reviewed.
+  remaining_gaps:
+    type: list[string]
+    description: Follow-up gaps, misconceptions, or next learning targets.
+recommended_fields:
+  tradeoffs_discussed:
+    type: list[string]
+    description: Design or implementation tradeoffs discussed during review.
+  mistakes_or_misconceptions:
+    type: list[string]
+    description: Mistakes corrected or misconceptions clarified.
+  next_task:
+    type: string
+    description: Suggested next task id, if known.
+example:
+  id: "002_add_feature"
+  task_id: "002_add_feature"
+  status: complete
+  completed_summary: "Added API coverage for missing todo update behavior."
+  expected_understanding:
+    - "How FastAPI returns HTTPException responses."
+    - "How to write focused API tests with TestClient."
+  concepts_taught:
+    - "API contract testing."
+    - "Failure-path coverage."
+  evidence_reviewed:
+    - "backend/tests/test_todos.py"
+    - "pytest output"
+  remaining_gaps:
+    - "Successful PATCH behavior still needs coverage."

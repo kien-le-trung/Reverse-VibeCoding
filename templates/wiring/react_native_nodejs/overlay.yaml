@@ -1,0 +1,12 @@
+id: react_native_nodejs
+type: wiring
+stacks:
+  - nodejs
+  - react_native
+requires:
+  backend: nodejs
+  frontend: react_native
+conflicts: []
+student_visible: true
+files:
+  - files

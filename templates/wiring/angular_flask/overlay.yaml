@@ -1,0 +1,12 @@
+id: angular_flask
+type: wiring
+stacks:
+  - flask
+  - angular
+requires:
+  backend: flask
+  frontend: angular
+conflicts: []
+student_visible: true
+files:
+  - files

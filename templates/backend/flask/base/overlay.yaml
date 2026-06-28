@@ -1,0 +1,10 @@
+id: flask_base
+type: stack_base
+stacks:
+  - flask
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files:
+  - files/backend
+checks: []

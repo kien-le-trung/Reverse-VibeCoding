@@ -1,0 +1,12 @@
+id: react_native_django
+type: wiring
+stacks:
+  - django
+  - react_native
+requires:
+  backend: django
+  frontend: react_native
+conflicts: []
+student_visible: true
+files:
+  - files

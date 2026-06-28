@@ -1,0 +1,14 @@
+id: level_4
+type: completeness_level
+stacks:
+  - django
+requires: 
+  base: django_base
+  min_level: level_3
+conflicts: []
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files: 
+  - files/backend
+checks: []

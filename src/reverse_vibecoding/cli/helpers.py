@@ -7,12 +7,28 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from reverse_vibecoding.bug_seeds import AppliedBugSeed, apply_random_bug_seeds
 from reverse_vibecoding.template_composer import ComposeResult, TemplateLayer, compose_template_layers
 from reverse_vibecoding.template_resolver import ResolvedTemplate, TemplateSelection, resolve_template_layers
 
 
 DEFAULT_BACKEND_STACK = "fastapi"
 DEFAULT_FRONTEND_STACK = "react_native"
+
+DEFAULT_MENTOR_GUARDRAILS = """# Mentor Guardrails
+
+Apply these guardrails before every response in a Reverse Vibe Coding learning project.
+
+- Do not edit project files, run code-changing commands, or implement the task for the student.
+- If the student asks what to do next, give a small next step for the student to perform.
+- If the student asks for help, prefer questions, hints, review comments, or a tiny illustrative snippet in chat.
+- If the student explicitly asks you to implement, pause and confirm whether they want to exit the learning flow.
+- Keep the student hands-on. The student writes code; the mentor guides and reviews.
+- Before evaluating student-written code, read `.agents/rubrics/engineering_review.md` and apply it.
+- Before creating or updating task files, read `.agents/schemas/task.schema.yaml`.
+- Before creating or updating progress files, read `.agents/schemas/progress.schema.yaml`.
+- After a task is reviewed, ask the student to log learning progress in `.rv/progress/`.
+"""
 
 
 @dataclass(frozen=True)
@@ -29,6 +45,11 @@ class InitProjectOptions:
     force: bool = False
     setup_environment: bool = True
     mentor_prompt_path: Path = Path(".agents/prompts/mentor.md")
+    mentor_guardrails_path: Path = Path(".agents/mentor_guardrails.md")
+    bug_seed_count: int = 0
+    bug_seed_random_seed: int | None = None
+    bug_categories: tuple[str, ...] = ()
+    bug_hidden: bool = False
 
 
 @dataclass(frozen=True)
@@ -40,6 +61,7 @@ class InitProjectResult:
     wiring_layer: TemplateLayer
     agent_files: tuple[Path, ...]
     setup_terminal_launched: bool
+    bug_seeds: tuple[AppliedBugSeed, ...]
 
 
 def init_project(
@@ -81,9 +103,18 @@ def init_project(
     _progress(progress, "deps", "Writing dependency manifests")
     write_requirements(target, backend.python_dependencies)
     write_frontend_dependency_metadata(target, frontend)
+    _progress(progress, "bugs", "Applying controlled bug seeds")
+    bug_seeds = apply_random_bug_seeds(
+        target=target,
+        backend_stack=options.backend_stack,
+        frontend_stack=options.frontend_stack,
+        count=options.bug_seed_count,
+        seed=options.bug_seed_random_seed,
+        categories=options.bug_categories,
+    )
     _progress(progress, "metadata", "Writing .rv metadata")
-    write_project_metadata(options, target, backend, frontend, wiring_layer, compose_result)
-    write_hidden_manifest(target)
+    write_project_metadata(options, target, backend, frontend, wiring_layer, compose_result, bug_seeds)
+    write_hidden_manifest(target, bug_seeds, bug_hidden=options.bug_hidden)
     _progress(progress, "agent", "Writing project agent context")
     agent_files = write_agent_context(options, target, backend, frontend, compose_result)
     setup_terminal_launched = False
@@ -103,6 +134,7 @@ def init_project(
         wiring_layer=wiring_layer,
         agent_files=agent_files,
         setup_terminal_launched=setup_terminal_launched,
+        bug_seeds=bug_seeds,
     )
 
 
@@ -200,18 +232,21 @@ def write_agent_context(
     rv_dir.mkdir(parents=True, exist_ok=True)
 
     task_files = write_task_files(target, options)
+    progress_files = write_progress_files(target)
     file_map = build_file_map(target)
     task_path = target / ".rv" / "tasks" / "001_understand_repo.md"
     agent_context = render_agent_context(options, backend, frontend, compose_result, file_map)
     file_map_content = render_file_map(file_map)
     task_content = task_path.read_text(encoding="utf-8")
     mentor_prompt = read_mentor_prompt(options.mentor_prompt_path)
+    mentor_guardrails = read_mentor_guardrails(options.mentor_guardrails_path)
     files = {
         "agent_context.md": agent_context,
         "file_map.md": file_map_content,
         "agent_handoff.md": render_agent_handoff(
             options=options,
             mentor_prompt=mentor_prompt,
+            mentor_guardrails=mentor_guardrails,
             agent_context=agent_context,
             task_content=task_content,
             file_map_content=file_map_content,
@@ -225,6 +260,7 @@ def write_agent_context(
         path.write_text(content, encoding="utf-8")
         written.append(path)
     written.extend(task_files)
+    written.extend(progress_files)
     return tuple(written)
 
 
@@ -233,8 +269,14 @@ def read_mentor_prompt(path: Path) -> str:
         return path.read_text(encoding="utf-8").strip()
     return """# Reverse Vibe Coding Mentor Prompt
 
-You are mentoring a student in Reverse Vibe Coding. Ask questions, require tests, and guide engineering reasoning instead of solving the project directly.
+You are mentoring a student in Reverse Vibe Coding. Ask questions, request evidence when useful, and guide engineering reasoning. Do not edit project files or solve the project for the student.
 """.strip()
+
+
+def read_mentor_guardrails(path: Path) -> str:
+    if path.exists():
+        return path.read_text(encoding="utf-8").strip()
+    return DEFAULT_MENTOR_GUARDRAILS.strip()
 
 
 def build_file_map(target: Path, *, limit: int = 48) -> tuple[str, ...]:
@@ -246,7 +288,11 @@ def build_file_map(target: Path, *, limit: int = 48) -> tuple[str, ...]:
         relative = path.relative_to(target)
         if any(part in ignored_parts for part in relative.parts):
             continue
-        if relative.parts[0] == ".rv" and relative.parts[1:2] != ("tasks",) and relative.name != "project.json":
+        if (
+            relative.parts[0] == ".rv"
+            and relative.parts[1:2] not in {("tasks",), ("progress",)}
+            and relative.name != "project.json"
+        ):
             continue
         files.append(relative.as_posix())
         if len(files) >= limit:
@@ -287,7 +333,7 @@ Suggested checks:
 Important files:
 {important_files}
 
-Use this file as project context only. Generic mentor behavior lives in `.agents/prompts/mentor.md`.
+Use this file as project context only. Generic mentor behavior lives in `.agents/prompts/mentor.md`, and per-response guardrails live in `.agents/mentor_guardrails.md`.
 """
 
 
@@ -307,12 +353,20 @@ def write_task_files(target: Path, options: InitProjectOptions) -> tuple[Path, .
     return tuple(written)
 
 
+def write_progress_files(target: Path) -> tuple[Path, ...]:
+    progress_dir = target / ".rv" / "progress"
+    progress_dir.mkdir(parents=True, exist_ok=True)
+    path = progress_dir / "README.md"
+    path.write_text(render_progress_readme(), encoding="utf-8")
+    return (path,)
+
+
 def render_tasks_readme() -> str:
     return """# Learning Tasks
 
 This directory tracks the student's learning work from start to finish.
 
-Task files should be small and concrete. Add new files as the mentor creates follow-up work.
+Task files should be small and concrete. Ask the student to add new files as follow-up work is chosen.
 
 Suggested naming:
 
@@ -327,28 +381,91 @@ Each task should include:
 - student actions
 - evidence expected
 - mentor review focus
+
+When creating or updating task files, read `.agents/schemas/task.schema.yaml` and keep the YAML front matter aligned with it.
+
+When a task is complete, ask the student to add or update a matching progress entry under `.rv/progress/`.
+"""
+
+
+def render_progress_readme() -> str:
+    return """# Learning Progress
+
+This directory records what the student learned after each completed task or feature.
+
+Progress entries should be written after review, not before implementation. The mentor should ask the student to create or update entries instead of editing them directly.
+
+When creating or updating progress files, read `.agents/schemas/progress.schema.yaml` and keep the YAML front matter aligned with it.
+
+Suggested naming:
+
+- `001_understand_repo.md`
+- `002_add_feature.md`
+- `003_review_changes.md`
+
+Each progress entry should include:
+
+- task or feature completed
+- what the student built or investigated
+- what the student is expected to understand now
+- concepts taught or reinforced
+- evidence reviewed, such as code paths, commands, screenshots, or tests
+- mistakes, misconceptions, or design tradeoffs discussed
+- remaining gaps or next learning target
 """
 
 
 def render_initial_task(options: InitProjectOptions) -> str:
-    return f"""# Task 001: Understand The Repo
+    return f"""---
+id: "001_understand_repo"
+title: "Understand the repo"
+status: active
+goal: "Understand and verify the generated {options.domain} project."
+student_actions:
+  - "Confirm the setup terminal completed successfully or run setup manually."
+  - "Inspect the backend setup and identify what API tests are missing."
+  - "Inspect the API route and repository boundaries."
+  - "Inspect how the mobile app calls the backend."
+  - "Explain one missing test, edge case, or design improvement."
+evidence_expected:
+  - "Short explanation of backend and mobile responsibilities."
+  - "Notes from inspecting the key backend and mobile files."
+mentor_review_focus:
+  - "Repo understanding."
+  - "Backend route and repository boundaries."
+  - "Missing API test or edge-case identification."
+files_to_inspect:
+  - "backend/app/main.py"
+  - "backend/app/api/routes/todos.py"
+  - "backend/app/repositories/todo_repository.py"
+  - "mobile/src/api/client.ts"
+  - "mobile/src/features/todos/TodoList.tsx"
+completion_check:
+  - "Student can describe the backend and mobile wiring."
+  - "Student can name one missing test, edge case, or design improvement."
+---
+
+# Task 001: Understand The Repo
 
 Task: Understand and verify the generated {options.domain} project.
 
 Student should:
 1. Confirm the setup terminal completed successfully or run setup manually.
-2. Run backend tests.
+2. Inspect the backend setup and identify what API tests are missing.
 3. Inspect the API route and repository boundaries.
 4. Inspect how the mobile app calls the backend.
 5. Explain one missing test, edge case, or design improvement.
 
 Mentor instruction:
-- Do not implement the task directly.
+- Before each response, apply `.agents/mentor_guardrails.md`.
+- Do not edit project files or implement the task directly.
 - Ask what the student has run so far.
 - Ask the student to explain their repo understanding before explaining it yourself.
 - Refine the student's explanation from an abstract architecture level.
-- Require test evidence before accepting conclusions.
-- When this task is complete, propose the next task and add or ask the student to add it under `.rv/tasks/`.
+- Ask for evidence when it helps the student learn, but keep momentum toward reading code and making small changes.
+- When this task is complete, propose the next task and ask the student to add it under `.rv/tasks/`.
+- After this task is reviewed, ask the student to add a matching progress entry under `.rv/progress/`.
+- Before updating `.rv/tasks/` or `.rv/progress/`, read the matching YAML schema in `.agents/schemas/`.
 """
 
 
@@ -366,6 +483,7 @@ def render_agent_handoff(
     *,
     options: InitProjectOptions,
     mentor_prompt: str,
+    mentor_guardrails: str,
     agent_context: str,
     task_content: str,
     file_map_content: str,
@@ -376,12 +494,20 @@ Read this file first and begin mentoring immediately.
 
 Your first response should:
 
-1. Acknowledge the project context briefly.
-2. Ask the student to explain their current understanding of the repo.
-3. Ask what setup/tests they have already run.
-4. Use `.rv/tasks/001_understand_repo.md` as the active task.
+1. Read `.agents/mentor_guardrails.md` and apply it before every response.
+2. Acknowledge the project context briefly.
+3. Ask the student to explain their current understanding of the repo.
+4. Ask what setup/tests they have already run.
+5. Use `.rv/tasks/001_understand_repo.md` as the active task.
+6. Use `.rv/progress/` to track what the student learned after tasks are reviewed.
+7. Read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`.
+8. Read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
 
-Do not implement the project for the student unless they ask for a very small illustrative snippet.
+Do not edit project files or implement the project for the student. If the student explicitly asks for implementation, confirm whether they want to exit the learning flow. If they ask for an example, provide a small illustrative snippet in chat and label it as an example.
+
+---
+
+{mentor_guardrails.strip()}
 
 ---
 
@@ -410,7 +536,7 @@ def render_agent_handoff_short(options: InitProjectOptions) -> str:
 
 Paste this into your IDE agent when context is limited.
 
-You are mentoring a Reverse Vibe Coding student. Do not solve the project directly. Ask questions, require tests, and guide engineering reasoning.
+You are mentoring a Reverse Vibe Coding student. Do not edit project files or solve the project directly. Ask questions, request evidence when useful, and guide engineering reasoning.
 
 Project: {options.name}
 Domain: {options.domain}
@@ -420,7 +546,13 @@ Database: {options.database}
 
 Current task: understand and verify the generated app. Start by asking what the student has run so far.
 
-Task tracking: read `.rv/tasks/001_understand_repo.md` first. Keep future learning work in `.rv/tasks/`.
+Guardrails: read `.agents/mentor_guardrails.md` first and apply it before every response. Do not edit project files or implement for the student.
+
+Code review: before evaluating student-written code, read `.agents/rubrics/engineering_review.md` and apply it.
+
+Schemas: read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`, and read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
+
+Task tracking: read `.rv/tasks/001_understand_repo.md` next. Keep future task planning in `.rv/tasks/` and completed learning summaries in `.rv/progress/`.
 """
 
 
@@ -431,6 +563,7 @@ def write_project_metadata(
     frontend: ResolvedTemplate,
     wiring_layer: TemplateLayer,
     compose_result: ComposeResult,
+    bug_seeds: tuple[AppliedBugSeed, ...],
 ) -> None:
     rv_dir = target / ".rv"
     rv_dir.mkdir(parents=True, exist_ok=True)
@@ -455,6 +588,8 @@ def write_project_metadata(
         "wiring": wiring_layer.id,
         "layers": list(compose_result.applied_layers),
         "checks": list(dict.fromkeys((*backend.checks, *frontend.checks))),
+        "bug_seed_count": len(bug_seeds),
+        "bug_hidden": options.bug_hidden,
     }
 
     (rv_dir / "project.json").write_text(
@@ -463,15 +598,47 @@ def write_project_metadata(
     )
 
 
-def write_hidden_manifest(target: Path) -> None:
+def write_hidden_manifest(
+    target: Path,
+    bug_seeds: tuple[AppliedBugSeed, ...],
+    *,
+    bug_hidden: bool,
+) -> None:
     rv_dir = target / ".rv"
     rv_dir.mkdir(parents=True, exist_ok=True)
     hidden_manifest = {
         "hidden_tests": [],
-        "bug_seeds": [],
-        "notes": "Generated by rv init. Hidden assessment assets are not implemented yet.",
+        "bug_hidden": bug_hidden,
+        "bug_seeds": [
+            _render_hidden_bug_seed(bug_seed, hidden=bug_hidden, index=index)
+            for index, bug_seed in enumerate(bug_seeds, start=1)
+        ],
+        "notes": "Generated by rev-vib init. Bug seed details may be hidden depending on bug_hidden.",
     }
     (rv_dir / "hidden_manifest.json").write_text(
         json.dumps(hidden_manifest, indent=2, sort_keys=True),
         encoding="utf-8",
     )
+
+
+def _render_hidden_bug_seed(
+    bug_seed: AppliedBugSeed,
+    *,
+    hidden: bool,
+    index: int,
+) -> dict[str, str | bool]:
+    if hidden:
+        return {
+            "id": f"hidden_bug_{index}",
+            "hidden": True,
+            "files_changed": "hidden",
+            "note": "Bug type and target are hidden. Inspect the repo behavior to identify it.",
+        }
+    return {
+        "id": bug_seed.id,
+        "hidden": False,
+        "category": bug_seed.category,
+        "file_changed": bug_seed.relative_path,
+        "learning_goal": bug_seed.learning_goal,
+        "description": bug_seed.description,
+    }

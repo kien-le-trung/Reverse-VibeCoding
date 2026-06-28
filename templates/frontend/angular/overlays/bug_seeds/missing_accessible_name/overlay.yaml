@@ -1,0 +1,9 @@
+id: missing_accessible_name
+type: bug_seed
+stacks:
+  - angular
+requires:
+  min_level: level_2
+conflicts: []
+student_visible: true
+files: []
