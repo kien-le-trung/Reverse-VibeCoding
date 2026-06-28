@@ -1,16 +1,17 @@
 schema_name: reverse_vibecoding_task
-version: 1
+version: 2
 format: yaml_front_matter_markdown
 description: >
   Schema for files in .rv/tasks/. Each task file should start with YAML
-  front matter that follows this schema, followed by optional Markdown notes.
+  front matter that describes a request from the user/operator to the coding
+  agent, followed by optional Markdown notes.
 required_fields:
   id:
     type: string
     description: Stable task id matching the file prefix, such as "002_add_feature".
   title:
     type: string
-    description: Short task title.
+    description: Short request title.
   status:
     type: enum
     allowed_values:
@@ -19,44 +20,52 @@ required_fields:
       - blocked
       - review
       - complete
-    description: Current task state.
-  goal:
+    description: Current request state.
+  request:
     type: string
-    description: One-sentence learning or implementation goal.
-  student_actions:
+    description: One-sentence request for the coding agent.
+  expected_behavior:
     type: list[string]
-    description: Concrete actions the student should perform.
-  evidence_expected:
+    description: Behavior the finished implementation should provide.
+  implementation_scope:
     type: list[string]
-    description: Evidence the student should bring back, such as commands, files, screenshots, or test output.
-  mentor_review_focus:
+    description: Boundaries for what the coding agent should inspect or change.
+  acceptance_criteria:
     type: list[string]
-    description: Review criteria the mentor should use when the student returns.
+    description: Conditions the user/operator will use to accept the work.
+  evidence_required:
+    type: list[string]
+    description: Evidence the coding agent should report, such as commands, files, screenshots, or test output.
 recommended_fields:
-  prerequisites:
+  context:
     type: list[string]
-    description: Setup, concepts, or files the student should inspect first.
+    description: Product or repo context the coding agent should know.
   files_to_inspect:
     type: list[string]
     description: Project-relative files likely relevant to the task.
   files_to_change:
     type: list[string]
-    description: Project-relative files the student is expected to edit.
-  completion_check:
+    description: Project-relative files the coding agent is expected to edit.
+  review_focus:
     type: list[string]
-    description: Conditions that mean the task is done.
+    description: Review criteria the user/operator should apply when the coding agent returns.
 example:
   id: "002_add_feature"
   title: "Add successful PATCH todo test"
   status: active
-  goal: "Add API coverage for a successful todo title update."
-  student_actions:
-    - "Create a todo with TestClient."
-    - "Patch that todo's title."
-    - "Assert status 200 and updated response body."
-  evidence_expected:
-    - "Passing pytest output for backend/tests/test_todos.py."
-  mentor_review_focus:
+  request: "Add API coverage for a successful todo title update."
+  expected_behavior:
+    - "PATCH /todos/{todo_id} returns status 200 for an existing todo."
+    - "The response body includes the updated title."
+  implementation_scope:
+    - "Change backend tests only."
+  acceptance_criteria:
+    - "A focused test covers the successful update path."
+    - "The relevant pytest command passes."
+  evidence_required:
+    - "Changed file list."
+    - "Passing pytest output."
+  review_focus:
     - "Correct API behavior."
     - "Test isolation."
     - "Response shape and status code."

@@ -37,7 +37,7 @@ class CliHelperTests(unittest.TestCase):
             self.assertIn("react_native_fastapi", result.compose_result.applied_layers)
             self.assertIn("fastapi>=0.115", (result.target / "requirements.txt").read_text())
             self.assertIn("Project: sample", (result.target / ".rv/agent_context.md").read_text())
-            self.assertIn("Reverse Vibe Coding Mentor Prompt", (result.target / ".rv/agent_handoff.md").read_text())
+            self.assertIn("Reverse VibeCoding Operator Prompt", (result.target / ".rv/agent_handoff.md").read_text())
             self.assertIn("apply it before every response", (result.target / ".rv/agent_handoff.md").read_text())
             self.assertIn(".agents/mentor_guardrails.md", (result.target / ".rv/agent_handoff.md").read_text())
             self.assertIn(".agents/rubrics/engineering_review.md", (result.target / ".rv/agent_handoff.md").read_text())
@@ -46,7 +46,7 @@ class CliHelperTests(unittest.TestCase):
             self.assertIn("Task 001", (result.target / ".rv/agent_handoff.md").read_text())
             self.assertIn("Paste this into your IDE agent", (result.target / ".rv/agent_handoff_short.md").read_text())
             self.assertIn("Task 001", (result.target / ".rv/tasks/001_understand_repo.md").read_text())
-            self.assertIn("Learning Progress", (result.target / ".rv/progress/README.md").read_text())
+            self.assertIn("Reverse VibeCoding Progress", (result.target / ".rv/progress/README.md").read_text())
             self.assertFalse(result.setup_terminal_launched)
 
     def test_init_project_rejects_existing_target_by_default(self) -> None:

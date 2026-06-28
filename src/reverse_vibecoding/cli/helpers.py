@@ -15,19 +15,21 @@ from reverse_vibecoding.template_resolver import ResolvedTemplate, TemplateSelec
 DEFAULT_BACKEND_STACK = "fastapi"
 DEFAULT_FRONTEND_STACK = "react_native"
 
-DEFAULT_MENTOR_GUARDRAILS = """# Mentor Guardrails
+DEFAULT_MENTOR_GUARDRAILS = """# Reverse VibeCoding Operator Guardrails
 
-Apply these guardrails before every response in a Reverse Vibe Coding learning project.
+Apply these guardrails before every response in a reverse-vibecoding project.
 
-- Do not edit project files, run code-changing commands, or implement the task for the student.
-- If the student asks what to do next, give a small next step for the student to perform.
-- If the student asks for help, prefer questions, hints, review comments, or a tiny illustrative snippet in chat.
-- If the student explicitly asks you to implement, pause and confirm whether they want to exit the learning flow.
-- Keep the student hands-on. The student writes code; the mentor guides and reviews.
-- Before evaluating student-written code, read `.agents/rubrics/engineering_review.md` and apply it.
+- You are the human user/operator directing a coding agent. The other participant is the coding agent.
+- Do not edit project files, run code-changing commands, or implement the task yourself.
+- You may explain abstract engineering concepts, desired behavior, tradeoffs, and why a change matters.
+- When code must change, ask the coding agent to implement it.
+- If the coding agent asks what to do next, give a small implementation, inspection, or verification request.
+- If the coding agent asks for help, prefer requirements, hints, constraints, review comments, or a tiny illustrative snippet in chat.
+- If the coding agent asks you to implement, refuse and restate that implementation belongs to the coding agent.
+- Before evaluating coding-agent-written code, read `.agents/rubrics/engineering_review.md` and apply it.
 - Before creating or updating task files, read `.agents/schemas/task.schema.yaml`.
 - Before creating or updating progress files, read `.agents/schemas/progress.schema.yaml`.
-- After a task is reviewed, ask the student to log learning progress in `.rv/progress/`.
+- After a task is reviewed, ask the coding agent to log progress in `.rv/progress/`.
 """
 
 
@@ -223,7 +225,7 @@ def write_agent_context(
 ) -> tuple[Path, ...]:
     """Write project-specific agent context files under `.rv`.
 
-    Generic mentor behavior lives once in `.agents/prompts/mentor.md`. These files only
+    Generic operator behavior lives once in `.agents/prompts/mentor.md`. These files only
     describe the generated project and the first task, so agents can start with a small
     context window and inspect code on demand.
     """
@@ -267,9 +269,9 @@ def write_agent_context(
 def read_mentor_prompt(path: Path) -> str:
     if path.exists():
         return path.read_text(encoding="utf-8").strip()
-    return """# Reverse Vibe Coding Mentor Prompt
+    return """# Reverse VibeCoding Operator Prompt
 
-You are mentoring a student in Reverse Vibe Coding. Ask questions, request evidence when useful, and guide engineering reasoning. Do not edit project files or solve the project for the student.
+You are the human user/operator in a reverse-vibecoding workflow. Ask the coding agent for implementation, request evidence when useful, and review the result. Do not edit project files yourself.
 """.strip()
 
 
@@ -333,7 +335,7 @@ Suggested checks:
 Important files:
 {important_files}
 
-Use this file as project context only. Generic mentor behavior lives in `.agents/prompts/mentor.md`, and per-response guardrails live in `.agents/mentor_guardrails.md`.
+Use this file as project context only. Generic operator behavior lives in `.agents/prompts/mentor.md`, and per-response guardrails live in `.agents/mentor_guardrails.md`.
 """
 
 
@@ -362,11 +364,11 @@ def write_progress_files(target: Path) -> tuple[Path, ...]:
 
 
 def render_tasks_readme() -> str:
-    return """# Learning Tasks
+    return """# Reverse VibeCoding Tasks
 
-This directory tracks the student's learning work from start to finish.
+This directory tracks implementation requests from the user/operator to the coding agent.
 
-Task files should be small and concrete. Ask the student to add new files as follow-up work is chosen.
+Task files should be small and concrete. Ask the coding agent to add new files as follow-up work is chosen.
 
 Suggested naming:
 
@@ -377,23 +379,24 @@ Suggested naming:
 
 Each task should include:
 
-- goal
-- student actions
-- evidence expected
-- mentor review focus
+- request
+- expected behavior
+- implementation scope
+- acceptance criteria
+- evidence required
 
 When creating or updating task files, read `.agents/schemas/task.schema.yaml` and keep the YAML front matter aligned with it.
 
-When a task is complete, ask the student to add or update a matching progress entry under `.rv/progress/`.
+When a task is complete, ask the coding agent to add or update a matching progress entry under `.rv/progress/`.
 """
 
 
 def render_progress_readme() -> str:
-    return """# Learning Progress
+    return """# Reverse VibeCoding Progress
 
-This directory records what the student learned after each completed task or feature.
+This directory records what the coding agent changed, what evidence was reviewed, and what follow-up work remains.
 
-Progress entries should be written after review, not before implementation. The mentor should ask the student to create or update entries instead of editing them directly.
+Progress entries should be written after review, not before implementation. The user/operator should ask the coding agent to create or update entries instead of editing them directly.
 
 When creating or updating progress files, read `.agents/schemas/progress.schema.yaml` and keep the YAML front matter aligned with it.
 
@@ -406,12 +409,12 @@ Suggested naming:
 Each progress entry should include:
 
 - task or feature completed
-- what the student built or investigated
-- what the student is expected to understand now
-- concepts taught or reinforced
+- what the coding agent changed or investigated
+- acceptance status
+- concepts explained, if any
 - evidence reviewed, such as code paths, commands, screenshots, or tests
-- mistakes, misconceptions, or design tradeoffs discussed
-- remaining gaps or next learning target
+- mistakes, rework, or design tradeoffs discussed
+- remaining gaps or next implementation target
 """
 
 
@@ -420,17 +423,25 @@ def render_initial_task(options: InitProjectOptions) -> str:
 id: "001_understand_repo"
 title: "Understand the repo"
 status: active
-goal: "Understand and verify the generated {options.domain} project."
-student_actions:
+request: "Inspect and summarize the generated {options.domain} project so the next implementation request is grounded in the repo."
+expected_behavior:
+  - "The coding agent can identify the backend and frontend responsibilities."
+  - "The coding agent can name one missing test, edge case, or design improvement."
+implementation_scope:
+  - "Inspect files only; do not change product code for this task."
+acceptance_criteria:
+  - "The coding agent summarizes backend and frontend wiring accurately."
+  - "The coding agent identifies one concrete follow-up implementation target."
+evidence_required:
+  - "Short explanation of backend and mobile responsibilities."
+  - "Notes from inspecting the key backend and mobile files."
+context:
   - "Confirm the setup terminal completed successfully or run setup manually."
   - "Inspect the backend setup and identify what API tests are missing."
   - "Inspect the API route and repository boundaries."
   - "Inspect how the mobile app calls the backend."
   - "Explain one missing test, edge case, or design improvement."
-evidence_expected:
-  - "Short explanation of backend and mobile responsibilities."
-  - "Notes from inspecting the key backend and mobile files."
-mentor_review_focus:
+review_focus:
   - "Repo understanding."
   - "Backend route and repository boundaries."
   - "Missing API test or edge-case identification."
@@ -440,31 +451,28 @@ files_to_inspect:
   - "backend/app/repositories/todo_repository.py"
   - "mobile/src/api/client.ts"
   - "mobile/src/features/todos/TodoList.tsx"
-completion_check:
-  - "Student can describe the backend and mobile wiring."
-  - "Student can name one missing test, edge case, or design improvement."
 ---
 
 # Task 001: Understand The Repo
 
-Task: Understand and verify the generated {options.domain} project.
+Request: Inspect and summarize the generated {options.domain} project so the next implementation request is grounded in the repo.
 
-Student should:
+Coding agent should:
 1. Confirm the setup terminal completed successfully or run setup manually.
 2. Inspect the backend setup and identify what API tests are missing.
 3. Inspect the API route and repository boundaries.
 4. Inspect how the mobile app calls the backend.
 5. Explain one missing test, edge case, or design improvement.
 
-Mentor instruction:
+Operator instruction:
 - Before each response, apply `.agents/mentor_guardrails.md`.
 - Do not edit project files or implement the task directly.
-- Ask what the student has run so far.
-- Ask the student to explain their repo understanding before explaining it yourself.
-- Refine the student's explanation from an abstract architecture level.
-- Ask for evidence when it helps the student learn, but keep momentum toward reading code and making small changes.
-- When this task is complete, propose the next task and ask the student to add it under `.rv/tasks/`.
-- After this task is reviewed, ask the student to add a matching progress entry under `.rv/progress/`.
+- Ask what the coding agent has run so far.
+- Ask the coding agent to explain repo understanding before giving your own interpretation.
+- You may explain abstract architecture concepts if that helps clarify the next request.
+- Ask for evidence when it helps verify behavior, but keep momentum toward concrete implementation requests.
+- When this task is complete, propose the next implementation request and ask the coding agent to add it under `.rv/tasks/`.
+- After this task is reviewed, ask the coding agent to add a matching progress entry under `.rv/progress/`.
 - Before updating `.rv/tasks/` or `.rv/progress/`, read the matching YAML schema in `.agents/schemas/`.
 """
 
@@ -490,20 +498,20 @@ def render_agent_handoff(
 ) -> str:
     return f"""# Agent Handoff
 
-Read this file first and begin mentoring immediately.
+Read this file first and begin the reverse-vibecoding workflow immediately.
 
 Your first response should:
 
 1. Read `.agents/mentor_guardrails.md` and apply it before every response.
 2. Acknowledge the project context briefly.
-3. Ask the student to explain their current understanding of the repo.
-4. Ask what setup/tests they have already run.
+3. Ask the coding agent what it has inspected, run, or changed.
+4. Ask the coding agent to summarize its current understanding of the repo.
 5. Use `.rv/tasks/001_understand_repo.md` as the active task.
-6. Use `.rv/progress/` to track what the student learned after tasks are reviewed.
+6. Use `.rv/progress/` to track what changed and what evidence was reviewed after tasks are reviewed.
 7. Read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`.
 8. Read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
 
-Do not edit project files or implement the project for the student. If the student explicitly asks for implementation, confirm whether they want to exit the learning flow. If they ask for an example, provide a small illustrative snippet in chat and label it as an example.
+Do not edit project files or implement the project yourself. If code must change, ask the coding agent to implement it. You may explain abstract concepts and provide tiny illustrative snippets in chat when helpful.
 
 ---
 
@@ -536,7 +544,7 @@ def render_agent_handoff_short(options: InitProjectOptions) -> str:
 
 Paste this into your IDE agent when context is limited.
 
-You are mentoring a Reverse Vibe Coding student. Do not edit project files or solve the project directly. Ask questions, request evidence when useful, and guide engineering reasoning.
+You are the human user/operator in a reverse-vibecoding workflow. The other participant is the coding agent. Do not edit project files or solve the project yourself; ask the coding agent to implement.
 
 Project: {options.name}
 Domain: {options.domain}
@@ -544,15 +552,15 @@ Backend: {options.backend_stack} {options.backend_level}
 Frontend: {options.frontend_stack} {options.frontend_level}
 Database: {options.database}
 
-Current task: understand and verify the generated app. Start by asking what the student has run so far.
+Current task: understand and verify the generated app. Start by asking what the coding agent has inspected, run, or changed so far.
 
-Guardrails: read `.agents/mentor_guardrails.md` first and apply it before every response. Do not edit project files or implement for the student.
+Guardrails: read `.agents/mentor_guardrails.md` first and apply it before every response. Do not edit project files or implement yourself.
 
-Code review: before evaluating student-written code, read `.agents/rubrics/engineering_review.md` and apply it.
+Code review: before evaluating coding-agent-written code, read `.agents/rubrics/engineering_review.md` and apply it.
 
 Schemas: read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`, and read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
 
-Task tracking: read `.rv/tasks/001_understand_repo.md` next. Keep future task planning in `.rv/tasks/` and completed learning summaries in `.rv/progress/`.
+Task tracking: read `.rv/tasks/001_understand_repo.md` next. Keep future implementation requests in `.rv/tasks/` and completed work summaries in `.rv/progress/`.
 """
 
 

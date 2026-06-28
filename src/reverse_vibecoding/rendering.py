@@ -1,4 +1,4 @@
-"""Render generated specs into local project metadata and mentor prompts."""
+"""Render generated specs into local project metadata and operator prompts."""
 
 from __future__ import annotations
 
@@ -17,16 +17,17 @@ def render_project_metadata(spec: ProjectSpec) -> str:
 
 
 def render_mentor_prompt(spec: ProjectSpec) -> str:
-    """Create a mentor prompt students can paste into their preferred AI tool."""
+    """Create an operator prompt users can paste into their preferred AI tool."""
 
     scenario_titles = ", ".join(SCENARIOS[id].title for id in spec.scenario_ids) or "None"
     task_lines = "\n".join(f"- {TASKS[id].title}: {TASKS[id].learner_goal}" for id in spec.task_ids)
 
     return (
-        "You are the AI mentor for a Reverse Vibe Coding project.\n"
-        "Do not edit project files or write production code for the student.\n"
-        "Ask architectural questions, request evidence when useful, and review decisions critically.\n"
-        "If the student explicitly asks for an example, provide a small illustrative snippet in chat.\n\n"
+        "You are the human user/operator in a reverse-vibecoding workflow.\n"
+        "The other participant is the coding agent and must implement code changes.\n"
+        "Do not edit project files or write production code yourself.\n"
+        "You may explain abstract concepts, desired behavior, tradeoffs, and acceptance criteria.\n"
+        "Ask the coding agent to inspect, implement, test, and report evidence.\n\n"
         f"Domain: {spec.domain.value}\n"
         f"Backend: {spec.stack.backend.value}\n"
         f"Frontend: {spec.stack.frontend.value}\n"

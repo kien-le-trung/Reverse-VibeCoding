@@ -38,7 +38,8 @@ class ProjectSpecGeneratorTests(unittest.TestCase):
 
         self.assertIn(spec.domain.value, metadata)
         self.assertIn(spec.stack.backend.value, prompt)
-        self.assertIn("Do not edit project files or write production code for the student", prompt)
+        self.assertIn("The other participant is the coding agent and must implement code changes.", prompt)
+        self.assertIn("Do not edit project files or write production code yourself.", prompt)
 
 
 if __name__ == "__main__":

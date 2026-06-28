@@ -1,7 +1,7 @@
 # Reverse Vibe Coding
 
-Reverse Vibe Coding is an AI-managed software engineering apprenticeship platform.
-Students write the software while AI tools act as mentor, reviewer, tech lead, and product manager.
+Reverse Vibe Coding is a role-reversal workflow for practicing with coding agents.
+The AI acts as the human user/operator with product intent and review standards; the human acts as the coding agent who implements the code.
 
 This repository currently contains the core project-generation frame, reusable starter templates, a Typer CLI, and one generated MVP sandbox project.
 
@@ -13,7 +13,7 @@ This repository currently contains the core project-generation frame, reusable s
 - `generators/`: generation manifests and registry inputs
 - `scenarios/`: scenario modifiers
 - `rubrics/`: grading and review rubrics
-- `prompts/`: mentor prompt packs
+- `prompts/`: operator prompt packs
 - `hidden_tests/`: hidden assessment skeletons
 - `tests/`: tests for the reusable core
 
@@ -46,7 +46,7 @@ rev-vib init my_project --backend-stack fastapi --frontend-stack react_native --
 
 During generation, `rev-vib init` prints initialization progress, reads dependency declarations from stack YAML files, writes `requirements.txt`, and opens a setup terminal unless `--no-setup` is passed.
 
-Generated projects are clean by default. To create a learning repo with controlled bug seeds, pass a bug count:
+Generated projects are clean by default. To create a practice repo with controlled bug seeds, pass a bug count:
 
 ```bash
 rev-vib init my_project --bug-seed-count 2 --bug-seed-random-seed 123
@@ -86,4 +86,4 @@ For short-context or free-tier agents, paste this line:
 Read sandbox/my_project/.rv/agent_handoff_short.md
 ```
 
-Learning work is planned in `.rv/tasks/` and completed learning progress is recorded in `.rv/progress/`. The global `.agents/mentor_guardrails.md` file is automatically referenced by generated handoffs so the mentor is reminded before every response not to implement work for the student. Task and progress entries should use the YAML schemas in `.agents/schemas/`. The intended loop is: explain your repo understanding, refine it with the mentor, implement a focused change, ask for review, log what was learned, then record the next task.
+Implementation requests are planned in `.rv/tasks/` and completed work summaries are recorded in `.rv/progress/`. The global `.agents/mentor_guardrails.md` file is automatically referenced by generated handoffs so the operator is reminded before every response not to implement work directly. Task and progress entries should use the YAML schemas in `.agents/schemas/`. The intended loop is: the operator describes desired behavior, the coding agent inspects and implements, the coding agent reports evidence, the operator reviews, then the coding agent records progress and the next task.

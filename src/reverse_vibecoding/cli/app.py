@@ -75,9 +75,9 @@ def init(
     handoff_path = (result.target / ".rv" / "agent_handoff.md").as_posix()
     short_handoff_path = (result.target / ".rv" / "agent_handoff_short.md").as_posix()
     typer.echo("[init:agent] To wake your IDE agent, paste this:")
-    typer.echo(f"  Read {handoff_path} and start the learning workflow.")
+    typer.echo(f"  Read {handoff_path} and start the reverse-vibecoding workflow.")
     typer.echo("For short-context agents, paste this instead:")
-    typer.echo(f"  Read {short_handoff_path} and start the learning workflow.")
+    typer.echo(f"  Read {short_handoff_path} and start the reverse-vibecoding workflow.")
     if setup_environment and result.setup_terminal_launched:
         typer.echo("[init:setup] Setup terminal opened for venv and requirements installation")
     elif setup_environment:
