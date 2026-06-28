@@ -1,0 +1,21 @@
+id: react_native_base
+type: stack_base
+stacks:
+  - react_native
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files:
+  - files/mobile
+npm_dependencies:
+  - "@expo/metro-runtime@^4.0.0"
+  - expo@^52.0.0
+  - expo-status-bar@~2.0.0
+  - react@18.3.1
+  - react-native@0.76.0
+npm_dev_dependencies:
+  - "@types/react@~18.3.12"
+  - jest@^29.7.0
+  - typescript@^5.6.3
+checks:
+  - npm test

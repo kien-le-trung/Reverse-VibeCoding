@@ -1,0 +1,12 @@
+id: level_1
+type: completeness_level
+stacks:
+  - fastapi
+requires: {}
+conflicts: []
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files: []
+checks:
+  - python -m pytest

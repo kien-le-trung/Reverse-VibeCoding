@@ -1,0 +1,15 @@
+id: level_4
+type: completeness_level
+stacks:
+  - fastapi
+requires:
+  base: fastapi_base
+  min_level: level_3
+conflicts: []
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files:
+  - files/backend
+checks:
+  - python -m pytest

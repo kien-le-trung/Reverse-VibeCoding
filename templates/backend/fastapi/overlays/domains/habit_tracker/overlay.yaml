@@ -1,0 +1,9 @@
+id: habit_tracker
+type: domain
+stacks:
+  - fastapi
+requires:
+  min_level: level_2
+conflicts: []
+student_visible: true
+

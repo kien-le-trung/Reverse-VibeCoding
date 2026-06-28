@@ -1,0 +1,16 @@
+id: fastapi_base
+type: stack_base
+stacks:
+  - fastapi
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files:
+  - files/backend
+python_dependencies:
+  - fastapi>=0.115
+  - uvicorn[standard]>=0.30
+  - httpx>=0.27
+  - pytest>=8
+checks:
+  - python -m pytest

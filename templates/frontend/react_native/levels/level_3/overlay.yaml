@@ -1,0 +1,15 @@
+id: level_3
+type: completeness_level
+stacks:
+  - react_native
+requires:
+  base: react_native_base
+  min_level: level_2
+conflicts: []
+student_visible: true
+composition: copy_tree
+overwrites: allowed
+files:
+  - files/mobile
+checks:
+  - npm test

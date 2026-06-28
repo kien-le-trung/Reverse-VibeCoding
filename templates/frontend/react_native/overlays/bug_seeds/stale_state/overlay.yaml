@@ -1,0 +1,10 @@
+id: stale_state
+type: bug_seed
+stacks:
+  - react_native
+requires:
+  min_level: level_4
+conflicts: []
+student_visible: false
+hidden_from_student: true
+

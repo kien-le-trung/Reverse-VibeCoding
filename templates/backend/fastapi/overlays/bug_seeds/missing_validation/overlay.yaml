@@ -1,0 +1,10 @@
+id: missing_validation
+type: bug_seed
+stacks:
+  - fastapi
+requires:
+  min_level: level_2
+conflicts: []
+student_visible: false
+hidden_from_student: true
+
