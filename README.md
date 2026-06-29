@@ -3,60 +3,136 @@
 Reverse Vibe Coding is a role-reversal workflow for practicing with coding agents.
 The AI acts as the operator/reviewer with product intent and review standards; the user implements all code changes.
 
-This repository currently contains the core project-generation frame, reusable starter templates, a Typer CLI, and one generated MVP sandbox project.
+This repository contains the project generator, reusable starter templates, reverse-vibecoding prompts, and tests for the generation system.
 
-## Current Frame
+## Repository Layout
 
-- `src/reverse_vibecoding/`: reusable core package
-- `templates/`: starter project templates
-- `sandbox/mvp_todo_fullstack/`: generated FastAPI + React Native MVP project
-- `generators/`: generation manifests and registry inputs
-- `scenarios/`: scenario modifiers
-- `rubrics/`: grading and review rubrics
-- `prompts/`: operator prompt packs
-- `hidden_tests/`: hidden assessment skeletons
-- `tests/`: tests for the reusable core
+- `src/reverse_vibecoding/`: reusable generator package and CLI helpers
+- `templates/`: backend, frontend, domain, database, level, bug, and wiring templates
+- `.agents/`: global operator prompt, guardrails, schemas, and review rubrics
+- `tests/`: tests for template resolution, generation, bug seeding, and CLI helpers
+- `sandbox/`: generated practice projects
 
 ## Development
 
+Install the generator in editable mode:
+
 ```bash
 python -m pip install -e .
+```
+
+Run the test suite:
+
+```bash
 python -m unittest discover -s . -p "test*.py"
 ```
 
 ## CLI
 
-After installing the project in editable mode, generate an MVP project with:
+Generate a default sandbox project:
 
 ```bash
 rev-vib init my_project
 ```
 
-This composes FastAPI, React Native, SQLite, Todo App, and React Native/FastAPI wiring templates into:
+By default this creates:
 
 ```text
 sandbox/my_project/
 ```
 
-The defaults can be overridden:
+The default stack is:
 
-```bash
-rev-vib init my_project --backend-stack fastapi --frontend-stack react_native --backend-level level_3 --frontend-level level_3
+- backend: `fastapi`
+- frontend: `react_native`
+- database: `sqlite`
+- domain: `todo_app`
+- backend level: `level_3`
+- frontend level: `level_3`
+- bugs: none
+
+## Init Flags
+
+`rev-vib init` accepts these options:
+
+```text
+name                              Project folder name under the sandbox root
+--backend-stack TEXT              Backend stack. Default: fastapi
+--frontend-stack TEXT             Frontend stack. Default: react_native
+--domain TEXT                     Domain overlay. Default: todo_app
+--database TEXT                   Backend database overlay. Default: sqlite
+--backend-level TEXT              Backend completeness level. Default: level_3
+--frontend-level TEXT             Frontend completeness level. Default: level_3
+--templates-root PATH             Template root directory. Default: templates
+--sandbox-root PATH               Generated project root directory. Default: sandbox
+--force                           Allow overwriting an existing project
+--setup / --no-setup              Open setup terminal after generation. Default: --setup
+--bug-seed-count INTEGER          Number of controlled bug seeds. Default: 0
+--bug-seed-random-seed INTEGER    Random seed for reproducible bug selection
+--bug-category TEXT               Restrict bug seeds to a category. Can be repeated
+--bug-hidden                      Hide selected bug type and target details in metadata
+--no-bugs                         Force a clean repo even if bug options are present
 ```
 
-During generation, `rev-vib init` prints initialization progress, reads dependency declarations from stack YAML files, writes `requirements.txt`, records frontend dependency metadata, and opens a setup terminal unless `--no-setup` is passed.
-
-Generated projects are clean by default. To create a practice repo with controlled bug seeds, pass a bug count:
+Examples:
 
 ```bash
-rev-vib init my_project --bug-seed-count 2 --bug-seed-random-seed 123
+rev-vib init my_project --backend-stack django --frontend-stack react
+rev-vib init my_project --backend-stack flask --frontend-stack vue --backend-level level_2
+rev-vib init my_project --backend-stack spring_boot --frontend-stack angular --no-setup
 ```
 
-Use `--bug-category validation` to restrict bug selection, `--bug-hidden` to hide bug type and target details from generated metadata, or `--no-bugs` to force a clean repo even when other bug options are present.
+Use `--force` only when you intentionally want to replace an existing generated project.
 
-The setup terminal runs:
+## Supported Stacks
 
-```bash
+Backend stacks:
+
+- `fastapi`
+- `nodejs`
+- `flask`
+- `django`
+- `spring_boot`
+
+Frontend stacks:
+
+- `react_native`
+- `vue`
+- `react`
+- `angular`
+
+Current domain:
+
+- `todo_app`
+
+Current database option:
+
+- `sqlite`
+
+Completeness levels:
+
+- `level_1`
+- `level_2`
+- `level_3`
+- `level_4`
+
+## Setup Behavior
+
+During generation, `rev-vib init`:
+
+1. Resolves backend, frontend, domain, database, level, and wiring templates.
+2. Copies template layers into `sandbox/<name>/`.
+3. Writes dependency metadata.
+4. Writes `requirements.txt` when the backend has Python dependencies.
+5. Writes `.rv/frontend_dependencies.json` for frontend dependencies.
+6. Applies requested bug seeds.
+7. Writes `.rv` project context, tasks, progress folders, and agent handoff files.
+8. Writes IDE-native instruction files for Codex, Claude, and Copilot.
+9. Opens a setup terminal unless `--no-setup` is passed.
+
+On Windows, the setup terminal runs:
+
+```powershell
 python -m venv venv
 . .\venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
@@ -64,33 +140,223 @@ cd mobile
 npm install
 ```
 
-Agent wake-up files are also generated:
+The venv is activated before Python packages are installed. Frontend packages are installed only when `mobile/package.json` exists.
+
+Manual setup:
+
+```powershell
+cd sandbox\my_project
+python -m venv venv
+. .\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+cd mobile
+npm install
+```
+
+For non-Python backends, there may be no `requirements.txt`; use the backend README and native package manager for that stack.
+
+## Generated Agent Files
+
+Generated projects include `.rv` workflow files:
 
 ```text
-.agents/global_prompt.md
-sandbox/my_project/.rv/agent_handoff.md
 sandbox/my_project/.rv/agent_context.md
+sandbox/my_project/.rv/agent_handoff.md
+sandbox/my_project/.rv/agent_handoff_short.md
+sandbox/my_project/.rv/file_map.md
+sandbox/my_project/.rv/frontend_dependencies.json
+sandbox/my_project/.rv/hidden_manifest.json
+sandbox/my_project/.rv/project.json
 sandbox/my_project/.rv/tasks/001_understand_repo.md
 sandbox/my_project/.rv/tasks/README.md
 sandbox/my_project/.rv/progress/README.md
-sandbox/my_project/.rv/file_map.md
-sandbox/my_project/.rv/agent_handoff_short.md
+```
+
+Generated projects also include native persistent instruction files:
+
+```text
 sandbox/my_project/AGENTS.md
 sandbox/my_project/CLAUDE.md
 sandbox/my_project/.github/copilot-instructions.md
 sandbox/my_project/.github/instructions/reverse-vibecoding.instructions.md
 ```
 
-For most IDE agents, paste this line:
+These files are generated from `.agents/global_prompt.md` and `.agents/global_guardrails.md`.
+They tell IDE agents that the user implements all code changes and the agent acts as operator/reviewer.
+
+To start a session, paste:
 
 ```text
 Read sandbox/my_project/.rv/agent_handoff.md
 ```
 
-For short-context or free-tier agents, paste this line:
+For short-context agents, paste:
 
 ```text
 Read sandbox/my_project/.rv/agent_handoff_short.md
 ```
 
-Implementation requests are planned in `.rv/tasks/` and completed work summaries are recorded in `.rv/progress/`. The global `.agents/global_guardrails.md` file is automatically referenced by generated handoffs and IDE-native instruction files so the operator is reminded before every response not to implement work directly. Task and progress entries should use the YAML schemas in `.agents/schemas/`. The intended loop is: the operator describes desired behavior, the user inspects and implements, the user reports evidence, the operator reviews, then progress and the next task are recorded.
+## Reverse-Vibecoding Workflow
+
+The intended loop is:
+
+1. The operator describes the desired behavior or suspected bug.
+2. The user inspects and implements the change.
+3. The user reports changed files and evidence.
+4. The operator reviews correctness, design, tests, and scope.
+5. Task and progress records are updated in `.rv/tasks/` and `.rv/progress/`.
+
+Task files should follow `.agents/schemas/task.schema.yaml`.
+Progress files should follow `.agents/schemas/progress.schema.yaml`.
+Code review should use `.agents/rubrics/engineering_review.md`.
+
+## Bug Seeding
+
+Generated projects are clean by default. To create a practice repo with controlled bugs:
+
+```bash
+rev-vib init bug_project --bug-seed-count 1
+```
+
+Use a random seed for reproducibility:
+
+```bash
+rev-vib init bug_project --bug-seed-count 2 --bug-seed-random-seed 123
+```
+
+Restrict by category:
+
+```bash
+rev-vib init bug_project --bug-seed-count 1 --bug-category validation
+```
+
+Hide bug details from generated metadata:
+
+```bash
+rev-vib init bug_project --bug-seed-count 1 --bug-hidden
+```
+
+Force a clean repo even when bug options are present:
+
+```bash
+rev-vib init bug_project --bug-seed-count 1 --no-bugs
+```
+
+### Bug Categories
+
+Current categories:
+
+- `validation`
+- `boundary_status_code`
+- `api_integration`
+- `http_status`
+- `partial_update`
+- `response_shape`
+- `route_mismatch`
+- `environment_config`
+
+### Bug Constraints
+
+Bug seeding follows these rules:
+
+- `--bug-seed-count` must be `0` or greater.
+- The requested count cannot exceed applicable bugs for the selected backend/frontend stack.
+- A bug applies only when its stack matches either the selected backend or selected frontend.
+- The target file must exist.
+- The expected clean source snippet must still exist in the file.
+- A bug cannot normally be applied twice because the clean snippet is removed after the first application.
+- `--bug-category` filters candidates by category and can be passed multiple times.
+- `--bug-hidden` hides bug details in `.rv/hidden_manifest.json`, but still applies the bug.
+- `--no-bugs` overrides bug options and forces a clean repo.
+
+### Current Max Bugs Per Project
+
+Current registry size: 30 bug seeds.
+
+Maximum applicable bugs per generated project:
+
+- any backend + `react_native`: 8
+- any backend + `vue`: 7
+- any backend + `react`: 7
+- any backend + `angular`: 7
+
+Each backend stack currently has five applicable backend bugs.
+React Native currently has three applicable frontend bugs.
+Vue, React, and Angular currently have two applicable frontend bugs each.
+
+### Current Bug Seeds
+
+Backend bug seeds:
+
+- `fastapi_missing_title_min_length`
+- `nodejs_missing_title_validation`
+- `flask_missing_title_validation`
+- `django_missing_title_validation`
+- `spring_boot_missing_title_validation`
+- `fastapi_missing_update_404`
+- `nodejs_missing_update_404`
+- `flask_missing_update_404`
+- `django_missing_update_404`
+- `spring_boot_missing_update_404`
+- `fastapi_create_returns_200`
+- `nodejs_create_returns_200`
+- `flask_create_returns_200`
+- `django_create_returns_200`
+- `spring_boot_create_returns_200`
+- `fastapi_update_resets_completed`
+- `nodejs_update_resets_completed`
+- `flask_update_resets_completed`
+- `django_update_resets_completed`
+- `spring_boot_update_resets_completed`
+- `fastapi_list_response_wrapped`
+- `nodejs_list_response_wrapped`
+- `flask_list_response_wrapped`
+- `django_list_response_wrapped`
+- `spring_boot_list_response_wrapped`
+
+Frontend bug seeds:
+
+- `frontend_missing_health_error_check` for React Native
+- `frontend_web_missing_health_error_check` for Vue, React, and Angular
+- `react_native_wrong_health_endpoint`
+- `frontend_web_wrong_health_endpoint` for Vue, React, and Angular
+- `react_native_wrong_api_base_url_env`
+
+## Metadata
+
+Generated project metadata lives in:
+
+```text
+.rv/project.json
+.rv/hidden_manifest.json
+.rv/frontend_dependencies.json
+```
+
+`.rv/project.json` records selected stacks, levels, dependency metadata, applied layers, bug count, and hidden flag.
+
+`.rv/hidden_manifest.json` records bug seed details unless `--bug-hidden` is used.
+When hidden, it records placeholder ids like `hidden_bug_1` and omits the real bug id, file path, category, learning goal, and description.
+
+## Testing The Generator
+
+Run all tests:
+
+```bash
+python -m unittest discover -s . -p "test*.py"
+```
+
+Focused bug seeding tests:
+
+```bash
+python -m unittest tests.test_bug_seeds
+```
+
+The bug seeding tests generate temporary sandbox projects with deterministic names like:
+
+```text
+bug_test_01
+bug_test_02
+bug_test_03
+```
+
+These are created under temporary directories during tests and are not committed.

@@ -22,10 +22,7 @@ class TodoController {
   List<Todo> listTodos() { return new ArrayList<>(todos.values()); }
 
   @PostMapping("/todos")
-  ResponseEntity<?> createTodo(@RequestBody TodoRequest request) {
-    if (request.title() == null || request.title().trim().isEmpty() || request.title().length() > 120) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("detail", "Todo title must be 1-120 characters"));
-    }
+  ResponseEntity<Todo> createTodo(@RequestBody TodoRequest request) {
     Todo todo = new Todo(nextId, request.title(), false);
     todos.put(nextId, todo);
     nextId += 1;
@@ -34,10 +31,6 @@ class TodoController {
 
   @PatchMapping("/todos/{todoId}")
   ResponseEntity<?> updateTodo(@PathVariable int todoId, @RequestBody TodoRequest request) {
-    if (!todos.containsKey(todoId)) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("detail", "Todo not found"));
-    if (request.title() == null || request.title().trim().isEmpty() || request.title().length() > 120) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("detail", "Todo title must be 1-120 characters"));
-    }
     Todo updated = new Todo(todoId, request.title(), todos.get(todoId).completed());
     todos.put(todoId, updated);
     return ResponseEntity.ok(updated);
