@@ -10,7 +10,10 @@ class TodoItem:
 
 class TodoRepository:
     def list(self) -> list[TodoItem]:
-        return list(Todo.objects.all().values('id', 'title', 'completed'))
+        return [
+            TodoItem(id=todo.id, title=todo.title, completed=todo.completed)
+            for todo in Todo.objects.all()
+        ]
 
     def create(self, title: str) -> TodoItem:
         object = Todo.objects.create(title=title, completed=False)

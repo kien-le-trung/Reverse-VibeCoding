@@ -46,10 +46,10 @@ Coding agent should:
 Operator instruction:
 - Before each response, apply `.agents/global_guardrails.md`.
 - Do not edit project files or implement the task directly.
-- Ask what the coding agent has run so far.
-- Ask the coding agent to explain repo understanding before giving your own interpretation.
+- Inspect available files, diffs, and task/progress logs before asking the coding agent for context.
+- Ask the coding agent to explain repo understanding only when it is needed for review or cannot be inferred from available evidence.
 - You may explain abstract architecture concepts if that helps clarify the next request.
-- Ask for evidence when it helps verify behavior, but keep momentum toward concrete implementation requests.
-- When this task is complete, propose the next implementation request and ask the coding agent to add it under `.rv/tasks/`.
-- After this task is reviewed, ask the coding agent to add a matching progress entry under `.rv/progress/`.
+- Collect evidence yourself when possible; ask for evidence only when you cannot inspect or run it directly.
+- When this task is complete, propose the next implementation request and add it under `.rv/tasks/`.
+- After this task is reviewed, add a matching progress entry under `.rv/progress/`.
 - Before updating `.rv/tasks/` or `.rv/progress/`, read the matching YAML schema in `.agents/schemas/`.

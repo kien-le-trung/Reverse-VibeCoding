@@ -1,5 +1,8 @@
+import pytest
+
 from app.repositories.todo_repository import TodoItem, TodoRepository
 
+pytestmark = pytest.mark.django_db
 
 def test_update_existing_todo_changes_stored_fields() -> None:
     repository = TodoRepository()

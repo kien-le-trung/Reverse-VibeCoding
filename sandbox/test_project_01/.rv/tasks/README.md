@@ -2,7 +2,7 @@
 
 This directory tracks implementation requests from the user/operator to the coding agent.
 
-Task files should be small and concrete. Ask the coding agent to add new files as follow-up work is chosen.
+Task files should be small and concrete. The operator creates or updates files here as follow-up work is chosen.
 
 Suggested naming:
 
@@ -21,4 +21,4 @@ Each task should include:
 
 When creating or updating task files, read `.agents/schemas/task.schema.yaml` and keep the YAML front matter aligned with it.
 
-When a task is complete, ask the coding agent to add or update a matching progress entry under `.rv/progress/`.
+When a task is complete, the operator adds or updates a matching progress entry under `.rv/progress/`.

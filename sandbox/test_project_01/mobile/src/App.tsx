@@ -5,7 +5,7 @@ import { getTodos, postTodos, putTodos, type Todo } from "./api/client";
 type Screen = "home" | "todos";
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("home");
+  const [screen, setScreen] = useState<Screen>("todos");
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTitle, setNewTitle] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -64,11 +64,11 @@ export default function App() {
   }
 
   return (
-    <main style={{ fontFamily: "sans-serif", padding: "2rem", maxWidth: "40rem", margin: "0 auto" }}>
+    <main style={{ fontFamily: "sans-serif", padding: "2rem", maxWidth: "40rem", margin: "0 auto", color: "#111827" }}>
       <h1>Reverse Vibe Coding</h1>
       <nav style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem" }}>
-        <button onClick={() => setScreen("home")}>Home</button>
-        <button onClick={() => setScreen("todos")}>Todos</button>
+        <button type="button" onClick={() => setScreen("home")}>Home</button>
+        <button type="button" onClick={() => setScreen("todos")}>Todos</button>
       </nav>
 
       {screen === "home" ? (
@@ -88,7 +88,7 @@ export default function App() {
 
           {error ? <p role="alert">{error}</p> : null}
 
-          {isLoading ? <p>Loading todos…</p> : null}
+          {isLoading ? <p>Loading todos...</p> : null}
 
           {!isLoading && todos.length === 0 ? <p>No todos yet.</p> : null}
 

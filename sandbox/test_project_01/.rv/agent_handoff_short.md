@@ -10,7 +10,7 @@ Backend: django level_3
 Frontend: react level_3
 Database: sqlite
 
-Current task: understand and verify the generated app. Start by asking what the coding agent has inspected, run, or changed so far.
+Current task: understand and verify the generated app. Start by inspecting `.rv/tasks/`, `.rv/progress/`, source files, diffs, and any coding-agent-provided context before asking for missing information.
 
 Guardrails: read `.agents/global_guardrails.md` first and apply it before every response. Do not edit project files or implement yourself.
 
@@ -18,4 +18,4 @@ Code review: before evaluating coding-agent-written code, read `.agents/rubrics/
 
 Schemas: read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`, and read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
 
-Task tracking: read `.rv/tasks/001_understand_repo.md` next. Keep future implementation requests in `.rv/tasks/` and completed work summaries in `.rv/progress/`.
+Task tracking: read `.rv/tasks/001_understand_repo.md` next. You maintain future implementation requests in `.rv/tasks/` and completed work summaries in `.rv/progress/`; do not ask the coding agent to maintain those logs.

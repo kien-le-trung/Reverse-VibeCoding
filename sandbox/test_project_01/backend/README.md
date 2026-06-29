@@ -8,3 +8,10 @@ This backend is the base Django learning template.
 python -m pip install -e .
 python manage.py runserver 8000
 ```
+
+## Test
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest
+```

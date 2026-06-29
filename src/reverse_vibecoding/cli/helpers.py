@@ -29,7 +29,9 @@ Apply these guardrails before every response in a reverse-vibecoding project.
 - Before evaluating user-written code, read `.agents/rubrics/engineering_review.md` and apply it.
 - Before creating or updating task files, read `.agents/schemas/task.schema.yaml`.
 - Before creating or updating progress files, read `.agents/schemas/progress.schema.yaml`.
-- After a task is reviewed, ask the user to log progress in `.rv/progress/`.
+- You own workflow logging: create or update `.rv/tasks/` when assigning work, and `.rv/progress/` after review.
+- Do not ask the user to maintain task or progress logs. Ask only for missing facts or evidence you cannot inspect yourself, then record that information yourself.
+- After a task is reviewed, log what you asked the user to do, what the user did, reviewed evidence, acceptance status, and remaining gaps in `.rv/progress/`.
 """
 
 
@@ -284,7 +286,7 @@ def read_mentor_prompt(path: Path) -> str:
         return path.read_text(encoding="utf-8").strip()
     return """# Reverse VibeCoding Operator Prompt
 
-You are the operator/reviewer in a reverse-vibecoding workflow. The user implements all code changes. Ask the user for implementation, request evidence when useful, and review the result. Do not edit project files yourself.
+You are the operator/reviewer in a reverse-vibecoding workflow. The user implements all code changes. Ask the user for implementation, collect evidence from files/diffs/commands when possible, and review the result. You own `.rv/tasks/` and `.rv/progress/` logging. Do not edit project files yourself.
 """.strip()
 
 
@@ -414,7 +416,7 @@ def render_tasks_readme() -> str:
 
 This directory tracks implementation requests from the operator to the user.
 
-Task files should be small and concrete. Ask the user to add new files as follow-up work is chosen.
+Task files should be small and concrete. The operator creates or updates files here as follow-up work is chosen.
 
 Suggested naming:
 
@@ -433,7 +435,7 @@ Each task should include:
 
 When creating or updating task files, read `.agents/schemas/task.schema.yaml` and keep the YAML front matter aligned with it.
 
-When a task is complete, ask the user to add or update a matching progress entry under `.rv/progress/`.
+When a task is complete, the operator adds or updates a matching progress entry under `.rv/progress/`.
 """
 
 
@@ -442,7 +444,7 @@ def render_progress_readme() -> str:
 
 This directory records what the user changed, what evidence was reviewed, and what follow-up work remains.
 
-Progress entries should be written after review, not before implementation. The operator should ask the user to create or update entries instead of editing them directly.
+Progress entries should be written by the operator after review, not before implementation. Do not ask the user to maintain these logs; ask only for missing facts or evidence that cannot be inspected directly.
 
 When creating or updating progress files, read `.agents/schemas/progress.schema.yaml` and keep the YAML front matter aligned with it.
 
@@ -513,12 +515,12 @@ User should:
 Operator instruction:
 - Before each response, apply `.agents/global_guardrails.md`.
 - Do not edit project files or implement the task directly.
-- Ask what the user has run so far.
-- Ask the user to explain repo understanding before giving your own interpretation.
+- Inspect available files, diffs, and task/progress logs before asking the user for context.
+- Ask the user to explain repo understanding only when it is needed for review or cannot be inferred from available evidence.
 - You may explain abstract architecture concepts if that helps clarify the next request.
-- Ask for evidence when it helps verify behavior, but keep momentum toward concrete implementation requests.
-- When this task is complete, propose the next implementation request and ask the user to add it under `.rv/tasks/`.
-- After this task is reviewed, ask the user to add a matching progress entry under `.rv/progress/`.
+- Collect evidence yourself when possible; ask for evidence only when you cannot inspect or run it directly.
+- When this task is complete, propose the next implementation request and add it under `.rv/tasks/`.
+- After this task is reviewed, add a matching progress entry under `.rv/progress/`.
 - Before updating `.rv/tasks/` or `.rv/progress/`, read the matching YAML schema in `.agents/schemas/`.
 """
 
@@ -550,10 +552,10 @@ Your first response should:
 
 1. Read `.agents/global_guardrails.md` and apply it before every response.
 2. Acknowledge the project context briefly.
-3. Ask the user what they have inspected, run, or changed.
-4. Ask the user to summarize their current understanding of the repo.
+3. Inspect the current task, progress logs, repo state, and any user-provided context.
+4. Ask the user for missing context only when it cannot be inferred from files, diffs, commands, or prior logs.
 5. Use `.rv/tasks/001_understand_repo.md` as the active task.
-6. Use `.rv/progress/` to track what changed and what evidence was reviewed after tasks are reviewed.
+6. Update `.rv/tasks/` when assigning work and `.rv/progress/` after review to track what you asked for, what the user did, and what evidence was reviewed.
 7. Read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`.
 8. Read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
 
@@ -598,7 +600,7 @@ Backend: {options.backend_stack} {options.backend_level}
 Frontend: {options.frontend_stack} {options.frontend_level}
 Database: {options.database}
 
-Current task: understand and verify the generated app. Start by asking what the user has inspected, run, or changed so far.
+Current task: understand and verify the generated app. Start by inspecting `.rv/tasks/`, `.rv/progress/`, source files, diffs, and any user-provided context before asking for missing information.
 
 Guardrails: read `.agents/global_guardrails.md` first and apply it before every response. Do not edit project files or implement yourself.
 
@@ -606,7 +608,7 @@ Code review: before evaluating user-written code, read `.agents/rubrics/engineer
 
 Schemas: read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`, and read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
 
-Task tracking: read `.rv/tasks/001_understand_repo.md` next. Keep future implementation requests in `.rv/tasks/` and completed work summaries in `.rv/progress/`.
+Task tracking: read `.rv/tasks/001_understand_repo.md` next. You maintain future implementation requests in `.rv/tasks/` and completed work summaries in `.rv/progress/`; do not ask the user to maintain those logs.
 """
 
 

@@ -3,7 +3,7 @@ version: 2
 format: yaml_front_matter_markdown
 description: >
   Schema for files in .rv/progress/. Each progress file should start with YAML
-  front matter that summarizes the user's completed work, followed by
+  front matter that summarizes the user's completed work and the operator's review notes, followed by
   optional Markdown reflection.
 required_fields:
   id:
@@ -21,10 +21,10 @@ required_fields:
     description: Outcome after user/operator review.
   change_summary:
     type: string
-    description: What the user changed or investigated.
+    description: What the user changed or investigated, written by the operator.
   evidence_reviewed:
     type: list[string]
-    description: Files, commands, screenshots, tests, or explanations reviewed.
+    description: Files, commands, screenshots, tests, or explanations the operator reviewed or could not verify.
   acceptance_status:
     type: list[string]
     description: Which acceptance criteria passed, failed, or still need evidence.

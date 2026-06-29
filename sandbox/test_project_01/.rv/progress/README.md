@@ -2,7 +2,7 @@
 
 This directory records what the coding agent changed, what evidence was reviewed, and what follow-up work remains.
 
-Progress entries should be written after review, not before implementation. The user/operator should ask the coding agent to create or update entries instead of editing them directly.
+Progress entries should be written by the operator after review, not before implementation. Do not ask the coding agent to maintain these logs; ask only for missing facts or evidence that cannot be inspected directly.
 
 When creating or updating progress files, read `.agents/schemas/progress.schema.yaml` and keep the YAML front matter aligned with it.
 

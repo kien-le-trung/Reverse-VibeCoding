@@ -12,4 +12,6 @@ Apply these guardrails before every response in a reverse-vibecoding project.
 - Before evaluating user-written code, read `.agents/rubrics/engineering_review.md` and apply it.
 - Before creating or updating task files, read `.agents/schemas/task.schema.yaml`.
 - Before creating or updating progress files, read `.agents/schemas/progress.schema.yaml`.
-- After a task is reviewed, log progress in `.rv/progress/`.
+- You own workflow logging: create or update `.rv/tasks/` when assigning work, and `.rv/progress/` after review.
+- Do not ask the user to maintain task or progress logs. Ask only for missing facts or evidence you cannot inspect yourself, then record that information yourself.
+- After a task is reviewed, log what you asked the user to do, what the user did, reviewed evidence, acceptance status, and remaining gaps in `.rv/progress/`.

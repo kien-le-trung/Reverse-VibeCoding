@@ -34,7 +34,7 @@ export async function postTodos(title: string): Promise<Todo> {
 
 export async function putTodos(id: number, title: string, completed: boolean): Promise<Todo> {
   const response = await fetch(`${API_URL}/todos/${id}`, {
-    method: "PUT",
+    method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },

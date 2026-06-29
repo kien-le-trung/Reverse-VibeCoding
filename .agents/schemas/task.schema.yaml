@@ -35,7 +35,7 @@ required_fields:
     description: Conditions the user/operator will use to accept the work.
   evidence_required:
     type: list[string]
-    description: Evidence the user should report, such as commands, files, screenshots, or test output.
+    description: Evidence the operator should collect or request if unavailable, such as commands, files, screenshots, or test output.
 recommended_fields:
   context:
     type: list[string]

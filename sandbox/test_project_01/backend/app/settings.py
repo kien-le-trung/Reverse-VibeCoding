@@ -6,7 +6,7 @@ ALLOWED_HOSTS = ["*"]
 INSTALLED_APPS = [
     "app"
 ]
-MIDDLEWARE = []
+MIDDLEWARE = ["app.middleware.LocalDevCorsMiddleware"]
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DATABASES = {
     "default": {
