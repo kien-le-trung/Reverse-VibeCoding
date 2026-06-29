@@ -22,3 +22,6 @@ yarn-error.log*
 .pnpm-store/
 
 reverse_vibe_coding_mvp_plan.md
+
+sandbox/test_project_01/
+sandbox/test_project_02/

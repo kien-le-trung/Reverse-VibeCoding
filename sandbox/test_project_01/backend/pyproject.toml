@@ -11,3 +11,8 @@ dependencies = ["django>=5.0"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "app.settings"
+pythonpath = ["."]
+python_files = ["test_*.py"]

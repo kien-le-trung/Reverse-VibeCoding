@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from app.models import Todo
 
 @dataclass(frozen = True)
 class TodoItem:
@@ -8,21 +9,22 @@ class TodoItem:
 
 
 class TodoRepository:
-    def __init__(self) -> None:
-        self._todos: dict[int, TodoItem] = {}
-        self._next_id = 1
-
     def list(self) -> list[TodoItem]:
-        return list(self._todos.values())
+        return list(Todo.objects.all().values('id', 'title', 'completed'))
 
     def create(self, title: str) -> TodoItem:
-        todo = TodoItem(id=self._next_id, title=title, completed=False)
-        self._todos[self._next_id] = todo
-        self._next_id += 1
-        return todo
+        object = Todo.objects.create(title=title, completed=False)
+        return TodoItem(id=object.id, title=object.title, completed=object.completed)
+
 
     def update(self, todo_id: int, title: str, completed: bool) -> TodoItem | None:
-        if todo_id in self._todos.keys():
-            self._todos[todo_id] = TodoItem(id=todo_id, title=title, completed=completed)
-            return self._todos[todo_id]
-        return None
+        todo = Todo.objects.filter(id=todo_id).first()
+        if todo is None:
+            return None
+        
+        if title is not None:
+            todo.title = title
+        if completed is not None:
+            todo.completed = completed
+        todo.save()
+        return TodoItem(id=todo.id, title=todo.title, completed=todo.completed)
