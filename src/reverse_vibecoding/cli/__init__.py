@@ -2,12 +2,20 @@
 
 from typing import Any
 
-__all__ = ["app"]
+__all__ = ["app", "run"]
 
 
-def __getattr__(name: str) -> Any:
-    if name == "app":
-        from reverse_vibecoding.cli.app import app
+def app(*args: Any, **kwargs: Any) -> Any:
+    """Compatibility callable for older console scripts."""
 
-        return app
-    raise AttributeError(name)
+    from reverse_vibecoding.cli.app import app as typer_app
+
+    return typer_app(*args, **kwargs)
+
+
+def run() -> None:
+    """Console script entry point."""
+
+    from reverse_vibecoding.cli.app import run as cli_run
+
+    cli_run()

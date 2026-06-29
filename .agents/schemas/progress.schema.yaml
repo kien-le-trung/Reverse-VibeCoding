@@ -3,7 +3,7 @@ version: 2
 format: yaml_front_matter_markdown
 description: >
   Schema for files in .rv/progress/. Each progress file should start with YAML
-  front matter that summarizes the coding agent's completed work, followed by
+  front matter that summarizes the user's completed work, followed by
   optional Markdown reflection.
 required_fields:
   id:
@@ -21,7 +21,7 @@ required_fields:
     description: Outcome after user/operator review.
   change_summary:
     type: string
-    description: What the coding agent changed or investigated.
+    description: What the user changed or investigated.
   evidence_reviewed:
     type: list[string]
     description: Files, commands, screenshots, tests, or explanations reviewed.

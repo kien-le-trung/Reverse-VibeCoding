@@ -1,8 +1,8 @@
 # Engineering Review Rubric
 
-Use this rubric whenever you evaluate coding-agent-written code. Read it before giving code review feedback, then ground your comments in the rubric instead of personal preference.
+Use this rubric whenever you evaluate user-written code. Read it before giving code review feedback, then ground your comments in the rubric instead of personal preference.
 
-The goal is not just working code. The coding agent's output should be correct, maintainable, understandable, scoped to the request, and aligned with common professional engineering practice.
+The goal is not just working code. The user's output should be correct, maintainable, understandable, scoped to the request, and aligned with common professional engineering practice.
 
 ## Correctness
 
@@ -41,7 +41,7 @@ The goal is not just working code. The coding agent's output should be correct, 
 - Reflection shows understanding of the final code.
 - Review feedback is specific, actionable, and prioritized by risk.
 - Findings distinguish correctness issues from style preferences.
-- The coding agent can explain why the implementation belongs at the chosen boundary.
+- The user can explain why the implementation belongs at the chosen boundary.
 
 ## Review Output
 
@@ -51,6 +51,6 @@ When reviewing code, lead with the most important issues first. Prefer this stru
 2. Design and boundary concerns.
 3. Missing or weak tests.
 4. Smaller maintainability or readability improvements.
-5. One short note on what the coding agent handled well only if it helps reinforce a practice.
+5. One short note on what the user handled well only if it helps reinforce a practice.
 
-Do not rewrite the solution yourself. Point to the relevant file or function, explain the issue, and ask the coding agent for the next small fix.
+Do not rewrite the solution yourself. Point to the relevant file or function, explain the issue, and ask the user for the next small fix.

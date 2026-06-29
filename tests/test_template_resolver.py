@@ -1,11 +1,17 @@
+import json
 import unittest
 from pathlib import Path
 
+from reverse_vibecoding.template_resolver import _parse_simple_yaml
 from reverse_vibecoding.template_resolver import TemplateSelection, resolve_template_layers
 
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "templates"
+
+
+def _package_dependencies(dependencies: dict[str, str]) -> set[str]:
+    return {f"{name}@{version}" for name, version in dependencies.items()}
 
 
 class TemplateResolverTests(unittest.TestCase):
@@ -115,17 +121,64 @@ class TemplateResolverTests(unittest.TestCase):
         self.assertTrue(any("react_native" in str(layer.source) for layer in react_native.layers))
 
     def test_stack_dependency_declarations_are_resolved(self) -> None:
-        fastapi = resolve_template_layers(
-            TEMPLATES,
-            TemplateSelection(stack="fastapi", level="level_1"),
-        )
-        react_native = resolve_template_layers(
-            TEMPLATES,
-            TemplateSelection(stack="react_native", level="level_1"),
-        )
+        expectations = {
+            "fastapi": ("python_dependencies", "fastapi>=0.115"),
+            "flask": ("python_dependencies", "flask>=3.0"),
+            "django": ("python_dependencies", "django>=5.0"),
+            "nodejs": ("npm_dependencies", "express@^4.19.2"),
+            "spring_boot": ("maven_dependencies", "org.springframework.boot:spring-boot-starter-web:3.3.0"),
+            "react_native": ("npm_dependencies", "expo@^52.0.0"),
+            "vue": ("npm_dependencies", "vue@^3.4.0"),
+            "react": ("npm_dependencies", "react@^18.3.1"),
+            "angular": ("npm_dependencies", "@angular/core@^18.0.0"),
+        }
 
-        self.assertIn("fastapi>=0.115", fastapi.python_dependencies)
-        self.assertIn("expo@^52.0.0", react_native.npm_dependencies)
+        for stack, (field_name, expected_dependency) in expectations.items():
+            with self.subTest(stack=stack):
+                resolved = resolve_template_layers(
+                    TEMPLATES,
+                    TemplateSelection(stack=stack, level="level_1"),
+                )
+
+                self.assertIn(expected_dependency, getattr(resolved, field_name))
+
+    def test_frontend_dev_dependency_declarations_are_resolved(self) -> None:
+        expectations = {
+            "react_native": "@types/react@~18.3.12",
+            "vue": "typescript@^5.6.3",
+            "react": "@types/react@^18.3.0",
+            "angular": "@angular/cli@^18.0.0",
+        }
+
+        for stack, expected_dependency in expectations.items():
+            with self.subTest(stack=stack):
+                resolved = resolve_template_layers(
+                    TEMPLATES,
+                    TemplateSelection(stack=stack, level="level_1"),
+                )
+
+                self.assertIn(expected_dependency, resolved.npm_dev_dependencies)
+
+    def test_frontend_base_package_json_matches_overlay_dependencies(self) -> None:
+        for package_path in sorted(TEMPLATES.glob("frontend/*/base/files/mobile/package.json")):
+            stack = package_path.parts[-5]
+            overlay_path = TEMPLATES / "frontend" / stack / "base" / "overlay.yaml"
+            package_json = json.loads(package_path.read_text(encoding="utf-8"))
+            overlay = _parse_simple_yaml(overlay_path.read_text(encoding="utf-8"))
+
+            package_dependencies = _package_dependencies(package_json.get("dependencies", {}))
+            package_dev_dependencies = _package_dependencies(package_json.get("devDependencies", {}))
+
+            self.assertEqual(
+                package_dependencies,
+                set(overlay.get("npm_dependencies", [])),
+                f"{stack} npm_dependencies drift from package.json",
+            )
+            self.assertEqual(
+                package_dev_dependencies,
+                set(overlay.get("npm_dev_dependencies", [])),
+                f"{stack} npm_dev_dependencies drift from package.json",
+            )
 
     def test_new_stack_default_overlays_resolve(self) -> None:
         backend = resolve_template_layers(

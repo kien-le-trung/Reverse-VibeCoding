@@ -79,9 +79,9 @@ def init(
     typer.echo("For short-context agents, paste this instead:")
     typer.echo(f"  Read {short_handoff_path} and start the reverse-vibecoding workflow.")
     if setup_environment and result.setup_terminal_launched:
-        typer.echo("[init:setup] Setup terminal opened for venv and requirements installation")
+        typer.echo("[init:setup] Setup terminal opened for backend and frontend dependency installation")
     elif setup_environment:
-        typer.echo("[init:setup] Run manually: python -m venv venv; .\\venv\\Scripts\\python.exe -m pip install -r requirements.txt")
+        typer.echo("[init:setup] Run manually: python -m venv venv; . .\\venv\\Scripts\\Activate.ps1; python -m pip install -r requirements.txt; cd mobile; npm install")
 
 
 if __name__ == "__main__":

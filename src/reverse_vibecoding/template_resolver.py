@@ -97,6 +97,7 @@ class ResolvedTemplate:
     python_dependencies: tuple[str, ...] = ()
     npm_dependencies: tuple[str, ...] = ()
     npm_dev_dependencies: tuple[str, ...] = ()
+    maven_dependencies: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -112,6 +113,7 @@ class OverlayManifest:
     python_dependencies: tuple[str, ...] = ()
     npm_dependencies: tuple[str, ...] = ()
     npm_dev_dependencies: tuple[str, ...] = ()
+    maven_dependencies: tuple[str, ...] = ()
 
     @property
     def files_dir(self) -> Path:
@@ -158,6 +160,9 @@ def resolve_template_layers(templates_root: Path, selection: TemplateSelection) 
     npm_dev_dependencies = tuple(
         dict.fromkeys(dependency for manifest in selected for dependency in manifest.npm_dev_dependencies)
     )
+    maven_dependencies = tuple(
+        dict.fromkeys(dependency for manifest in selected for dependency in manifest.maven_dependencies)
+    )
 
     return ResolvedTemplate(
         layers=layers,
@@ -166,6 +171,7 @@ def resolve_template_layers(templates_root: Path, selection: TemplateSelection) 
         python_dependencies=python_dependencies,
         npm_dependencies=npm_dependencies,
         npm_dev_dependencies=npm_dev_dependencies,
+        maven_dependencies=maven_dependencies,
     )
 
 
@@ -272,6 +278,7 @@ def _parse_manifest(path: Path) -> OverlayManifest:
         python_dependencies=tuple(_as_list(data.get("python_dependencies", []))),
         npm_dependencies=tuple(_as_list(data.get("npm_dependencies", []))),
         npm_dev_dependencies=tuple(_as_list(data.get("npm_dev_dependencies", []))),
+        maven_dependencies=tuple(_as_list(data.get("maven_dependencies", []))),
     )
 
 

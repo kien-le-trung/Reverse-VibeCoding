@@ -1,0 +1,58 @@
+{
+  "backend": {
+    "level": "level_3",
+    "manifests": [
+      "django_base",
+      "level_1",
+      "level_2",
+      "level_3",
+      "todo_app",
+      "sqlite"
+    ],
+    "maven_dependencies": [],
+    "npm_dependencies": [],
+    "npm_dev_dependencies": [],
+    "python_dependencies": [
+      "django>=5.0"
+    ],
+    "stack": "django"
+  },
+  "bug_hidden": false,
+  "bug_seed_count": 0,
+  "checks": [
+    "npm test"
+  ],
+  "database": "sqlite",
+  "domain": "todo_app",
+  "frontend": {
+    "level": "level_3",
+    "manifests": [
+      "react_base",
+      "level_1",
+      "level_2",
+      "level_3",
+      "todo_app"
+    ],
+    "npm_dependencies": [
+      "@vitejs/plugin-react@^4.0.0",
+      "vite@^5.0.0",
+      "react@^18.3.1",
+      "react-dom@^18.3.1"
+    ],
+    "npm_dev_dependencies": [
+      "typescript@^5.6.3"
+    ],
+    "stack": "react"
+  },
+  "layers": [
+    "django_base",
+    "level_2",
+    "level_3",
+    "react_base",
+    "level_2",
+    "level_3",
+    "react_django"
+  ],
+  "name": "test_project_01",
+  "wiring": "react_django"
+}

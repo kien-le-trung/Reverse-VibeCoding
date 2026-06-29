@@ -7,4 +7,6 @@ composition: copy_tree
 overwrites: allowed
 files:
   - files/backend
+maven_dependencies:
+  - org.springframework.boot:spring-boot-starter-web:3.3.0
 checks: []

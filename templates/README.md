@@ -438,8 +438,9 @@ Useful fields:
 - `python_dependencies`
 - `npm_dependencies`
 - `npm_dev_dependencies`
+- `maven_dependencies`
 
-Stack base manifests should declare their package dependencies. `rev-vib init` uses these fields to create `requirements.txt`, initialize `.venv`, and record frontend dependency metadata.
+Stack base manifests should declare their package dependencies. `rev-vib init` uses these fields to create `requirements.txt`, initialize `.venv`, and record frontend and backend dependency metadata.
 
 ## Overlay Layout
 

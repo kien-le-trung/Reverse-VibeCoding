@@ -25,4 +25,4 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [project.scripts]
-rev-vib = "reverse_vibecoding.cli:app"
+rev-vib = "reverse_vibecoding.cli.app:app"

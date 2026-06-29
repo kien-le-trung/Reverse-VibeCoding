@@ -7,4 +7,6 @@ composition: copy_tree
 overwrites: allowed
 files:
   - files/backend
+python_dependencies:
+  - flask>=3.0
 checks: []

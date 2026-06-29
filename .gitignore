@@ -9,3 +9,16 @@ dist/
 build/
 *.egg-info/
 codex/
+
+# Node/package manager install artifacts
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.pnpm-store/
+
+reverse_vibe_coding_mvp_plan.md
