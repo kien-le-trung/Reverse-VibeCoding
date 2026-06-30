@@ -59,14 +59,14 @@ The default stack is:
 name                              Project folder name under the sandbox root
 --backend-stack TEXT              Backend stack. Default: fastapi
 --frontend-stack TEXT             Frontend stack. Default: react_native
---domain TEXT                     Domain overlay. Default: todo_app
---database TEXT                   Backend database overlay. Default: sqlite
+--domain TEXT                     Domain overlay. Options: no_domain, todo_app, habit_tracker, expense_tracker. Default: todo_app
+--database TEXT                   Backend database overlay. Options: no_database, sqlite, postgresql_local, postgresql_supabase. Default: sqlite
 --backend-level TEXT              Backend completeness level. Default: level_3
 --frontend-level TEXT             Frontend completeness level. Default: level_3
 --templates-root PATH             Template root directory. Default: templates
 --sandbox-root PATH               Generated project root directory. Default: sandbox
 --force                           Allow overwriting an existing project
---setup / --no-setup              Open setup terminal after generation. Default: --setup
+--setup / --no-setup              Open project and install dependencies after generation. Default: --setup
 --bug-seed-count INTEGER          Number of controlled bug seeds. Default: 0
 --bug-seed-random-seed INTEGER    Random seed for reproducible bug selection
 --bug-category TEXT               Restrict bug seeds to a category. Can be repeated
@@ -83,6 +83,72 @@ rev-vib init my_project --backend-stack spring_boot --frontend-stack angular --n
 ```
 
 Use `--force` only when you intentionally want to replace an existing generated project.
+
+## Import Existing Projects
+
+Install the reverse-vibecoding agent workflow into an existing project:
+
+```bash
+rev-vib import C:\absolute\path\to\project
+```
+
+The import target must be an absolute path to an existing directory. The command copies `.agents/` into the target project, creates `.rv/` task/progress/handoff files, and writes native agent instruction files for Codex, Claude, and Copilot:
+
+```text
+<project>/.agents/global_prompt.md
+<project>/.agents/global_guardrails.md
+<project>/.agents/rubrics/engineering_review.md
+<project>/.agents/schemas/task.schema.yaml
+<project>/.agents/schemas/progress.schema.yaml
+<project>/.rv/agent_context.md
+<project>/.rv/agent_handoff.md
+<project>/.rv/agent_handoff_short.md
+<project>/.rv/file_map.md
+<project>/.rv/project.json
+<project>/.rv/tasks/001_understand_repo.md
+<project>/.rv/tasks/README.md
+<project>/.rv/progress/README.md
+<project>/AGENTS.md
+<project>/CLAUDE.md
+<project>/.github/copilot-instructions.md
+<project>/.github/instructions/reverse-vibecoding.instructions.md
+```
+
+After import, start an IDE agent with:
+
+```text
+Read <project>/.rv/agent_handoff.md and start the reverse-vibecoding workflow.
+```
+
+## Environment Doctor
+
+Check whether the local environment is ready for common `rev-vib` workflows:
+
+```bash
+rev-vib doctor
+```
+
+`doctor` verifies required project support files such as `.agents/`, `templates/`, and `sandbox/`, checks the Python version, and reports optional tools used by generated projects or editor automation:
+
+```text
+code
+node
+npm
+mvn
+```
+
+Missing required checks exit with a nonzero status. Missing optional tools are reported as warnings.
+
+## Open Projects
+
+Open a generated or imported project in VS Code and print the handoff prompt:
+
+```bash
+rev-vib open my_project
+rev-vib open C:\absolute\path\to\project
+```
+
+When the argument is a single project name, `rev-vib open` resolves it under `sandbox/`. Use `--sandbox-root` to point at another generated-project root.
 
 ## Supported Stacks
 
@@ -101,13 +167,23 @@ Frontend stacks:
 - `react`
 - `angular`
 
-Current domain:
+Current domain options:
 
+- `no_domain`
 - `todo_app`
+- `habit_tracker`
+- `expense_tracker`
 
-Current database option:
+Use `--domain no_domain` for lower-complexity projects that should not apply a product-domain overlay, including level 1 projects.
 
+Current database options:
+
+- `no_database`
 - `sqlite`
+- `postgresql_local`
+- `postgresql_supabase`
+
+Use `--database no_database` for lower-complexity projects that should not apply a persistence overlay, including level 2 projects.
 
 Completeness levels:
 
@@ -128,19 +204,21 @@ During generation, `rev-vib init`:
 6. Applies requested bug seeds.
 7. Writes `.rv` project context, tasks, progress folders, and agent handoff files.
 8. Writes IDE-native instruction files for Codex, Claude, and Copilot.
-9. Opens a setup terminal unless `--no-setup` is passed.
+9. Opens the generated project in a new VS Code window unless `--no-setup` is passed.
+10. Starts dependency installation in the background unless `--no-setup` is passed.
 
-On Windows, the setup terminal runs:
+On Windows, the background setup process writes progress to `.rv/setup.log` and runs:
 
 ```powershell
 python -m venv venv
 . .\venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-cd mobile
-npm install
+if (Test-Path requirements.txt) { python -m pip install -r requirements.txt }
+if (Test-Path backend\package.json) { Push-Location backend; npm install; Pop-Location }
+if ((Test-Path backend\pom.xml) -and (Get-Command mvn -ErrorAction SilentlyContinue)) { Push-Location backend; mvn dependency:go-offline; Pop-Location }
+if (Test-Path mobile\package.json) { Push-Location mobile; npm install; Pop-Location }
 ```
 
-The venv is activated before Python packages are installed. Frontend packages are installed only when `mobile/package.json` exists.
+Each package-manager command runs only when the matching manifest exists. Maven dependency prefetch runs only when `backend/pom.xml` exists and `mvn` is available on `PATH`.
 
 Manual setup:
 
@@ -148,9 +226,10 @@ Manual setup:
 cd sandbox\my_project
 python -m venv venv
 . .\venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-cd mobile
-npm install
+if (Test-Path requirements.txt) { python -m pip install -r requirements.txt }
+if (Test-Path backend\package.json) { Push-Location backend; npm install; Pop-Location }
+if ((Test-Path backend\pom.xml) -and (Get-Command mvn -ErrorAction SilentlyContinue)) { Push-Location backend; mvn dependency:go-offline; Pop-Location }
+if (Test-Path mobile\package.json) { Push-Location mobile; npm install; Pop-Location }
 ```
 
 For non-Python backends, there may be no `requirements.txt`; use the backend README and native package manager for that stack.

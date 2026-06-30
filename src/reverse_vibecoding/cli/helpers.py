@@ -2,18 +2,22 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Sequence
 
 from reverse_vibecoding.bug_seeds import AppliedBugSeed, apply_random_bug_seeds
 from reverse_vibecoding.template_composer import ComposeResult, TemplateLayer, compose_template_layers
-from reverse_vibecoding.template_resolver import ResolvedTemplate, TemplateSelection, resolve_template_layers
+from reverse_vibecoding.template_resolver import LEVEL_ORDER, ResolvedTemplate, TemplateSelection, resolve_template_layers
 
 
 DEFAULT_BACKEND_STACK = "fastapi"
 DEFAULT_FRONTEND_STACK = "react_native"
+NO_DOMAIN = "no_domain"
+NO_DATABASE = "no_database"
 
 DEFAULT_MENTOR_GUARDRAILS = """# Reverse VibeCoding Operator Guardrails
 
@@ -64,8 +68,56 @@ class InitProjectResult:
     frontend: ResolvedTemplate
     wiring_layer: TemplateLayer
     agent_files: tuple[Path, ...]
-    setup_terminal_launched: bool
+    project_opened: bool
+    setup_process_launched: bool
     bug_seeds: tuple[AppliedBugSeed, ...]
+
+
+@dataclass(frozen=True)
+class ImportProjectOptions:
+    target: Path
+    agents_root: Path = Path(".agents")
+    mentor_prompt_path: Path = Path(".agents/global_prompt.md")
+    mentor_guardrails_path: Path = Path(".agents/global_guardrails.md")
+
+
+@dataclass(frozen=True)
+class ImportProjectResult:
+    target: Path
+    agent_files: tuple[Path, ...]
+
+
+@dataclass(frozen=True)
+class DoctorOptions:
+    agents_root: Path = Path(".agents")
+    templates_root: Path = Path("templates")
+    sandbox_root: Path = Path("sandbox")
+    minimum_python: tuple[int, int] = (3, 11)
+
+
+@dataclass(frozen=True)
+class DoctorCheck:
+    name: str
+    ok: bool
+    required: bool
+    message: str
+
+
+@dataclass(frozen=True)
+class DoctorResult:
+    checks: tuple[DoctorCheck, ...]
+
+    @property
+    def ok(self) -> bool:
+        return all(check.ok for check in self.checks if check.required)
+
+
+@dataclass(frozen=True)
+class OpenProjectResult:
+    target: Path
+    opened: bool
+    handoff_path: Path
+    short_handoff_path: Path
 
 
 def init_project(
@@ -78,15 +130,18 @@ def init_project(
     _progress(progress, "check", f"Preparing target {target}")
     if target.exists() and not options.force:
         raise FileExistsError(f"Target directory already exists: {target}")
+    validate_init_options(options)
 
     _progress(progress, "resolve", f"Resolving backend stack {options.backend_stack}:{options.backend_level}")
+    domain_overlays = selected_domain_overlays(options.domain)
+    database_overlays = selected_database_overlays(options.database)
     backend = resolve_template_layers(
         options.templates_root,
         TemplateSelection(
             stack=options.backend_stack,
             level=options.backend_level,
-            domains=(options.domain,),
-            databases=(options.database,),
+            domains=domain_overlays,
+            databases=database_overlays,
         ),
     )
     _progress(progress, "resolve", f"Resolving frontend stack {options.frontend_stack}:{options.frontend_level}")
@@ -95,7 +150,7 @@ def init_project(
         TemplateSelection(
             stack=options.frontend_stack,
             level=options.frontend_level,
-            domains=(options.domain,),
+            domains=domain_overlays,
         ),
     )
     _progress(progress, "resolve", "Resolving full-stack wiring")
@@ -121,14 +176,19 @@ def init_project(
     write_hidden_manifest(target, bug_seeds, bug_hidden=options.bug_hidden)
     _progress(progress, "agent", "Writing project agent context")
     agent_files = write_agent_context(options, target, backend, frontend, compose_result)
-    setup_terminal_launched = False
+    project_opened = False
+    setup_process_launched = False
     if options.setup_environment:
-        _progress(progress, "setup", "Launching setup terminal")
-        setup_terminal_launched = launch_setup_terminal(target)
-        if not setup_terminal_launched:
-            _progress(progress, "setup", "Setup terminal is only supported automatically on Windows")
+        _progress(progress, "setup", "Opening generated project in VS Code")
+        project_opened = open_project_in_editor(target)
+        if not project_opened:
+            _progress(progress, "setup", "VS Code CLI not found on PATH; open the generated project manually")
+        _progress(progress, "setup", "Starting dependency installation")
+        setup_process_launched = launch_dependency_setup(target)
+        if not setup_process_launched:
+            _progress(progress, "setup", "Automatic dependency setup is only supported on Windows")
     else:
-        _progress(progress, "setup", "Skipping setup terminal")
+        _progress(progress, "setup", "Skipping project open and dependency setup")
 
     return InitProjectResult(
         target=target,
@@ -137,8 +197,168 @@ def init_project(
         frontend=frontend,
         wiring_layer=wiring_layer,
         agent_files=agent_files,
-        setup_terminal_launched=setup_terminal_launched,
+        project_opened=project_opened,
+        setup_process_launched=setup_process_launched,
         bug_seeds=bug_seeds,
+    )
+
+
+def import_project(
+    options: ImportProjectOptions,
+    progress: Callable[[str], None] | None = None,
+) -> ImportProjectResult:
+    """Install reverse-vibecoding agent files into an existing project."""
+
+    target = options.target.expanduser()
+    _progress(progress, "import", f"Preparing target {target}")
+    if not target.is_absolute():
+        raise ValueError(f"Import target must be an absolute path: {target}")
+    if not target.exists():
+        raise FileNotFoundError(f"Import target does not exist: {target}")
+    if not target.is_dir():
+        raise NotADirectoryError(f"Import target is not a directory: {target}")
+
+    _progress(progress, "import", "Copying agent prompts, schemas, and rubrics")
+    copied_agent_files = copy_agent_support_files(options.agents_root, target)
+    _progress(progress, "import", "Writing .rv task and handoff files")
+    agent_files = write_import_agent_context(options, target)
+    _progress(progress, "import", "Import complete")
+    return ImportProjectResult(target=target, agent_files=tuple((*copied_agent_files, *agent_files)))
+
+
+def doctor(
+    options: DoctorOptions = DoctorOptions(),
+    *,
+    command_resolver: Callable[[str], str | None] = shutil.which,
+    python_version: Sequence[int] = sys.version_info,
+) -> DoctorResult:
+    """Check whether the local environment can support common rev-vib workflows."""
+
+    checks: list[DoctorCheck] = []
+    minimum_python = options.minimum_python
+    current_python = tuple(python_version[:2])
+    checks.append(
+        DoctorCheck(
+            name="python",
+            ok=current_python >= minimum_python,
+            required=True,
+            message=(
+                f"Python {current_python[0]}.{current_python[1]} detected; "
+                f"requires {minimum_python[0]}.{minimum_python[1]}+"
+            ),
+        )
+    )
+
+    checks.extend(
+        [
+            _path_check("agents", options.agents_root, required=True, kind="dir"),
+            _path_check("global_prompt", options.agents_root / "global_prompt.md", required=True, kind="file"),
+            _path_check("global_guardrails", options.agents_root / "global_guardrails.md", required=True, kind="file"),
+            _path_check("task_schema", options.agents_root / "schemas" / "task.schema.yaml", required=True, kind="file"),
+            _path_check(
+                "progress_schema",
+                options.agents_root / "schemas" / "progress.schema.yaml",
+                required=True,
+                kind="file",
+            ),
+            _path_check(
+                "engineering_review_rubric",
+                options.agents_root / "rubrics" / "engineering_review.md",
+                required=True,
+                kind="file",
+            ),
+            _path_check("templates", options.templates_root, required=True, kind="dir"),
+            _sandbox_check(options.sandbox_root),
+        ]
+    )
+
+    for command, required in (
+        ("code", False),
+        ("node", False),
+        ("npm", False),
+        ("mvn", False),
+    ):
+        resolved = command_resolver(command)
+        checks.append(
+            DoctorCheck(
+                name=command,
+                ok=resolved is not None,
+                required=required,
+                message=f"{command} found at {resolved}" if resolved else f"{command} not found on PATH",
+            )
+        )
+
+    return DoctorResult(checks=tuple(checks))
+
+
+def open_project(project: Path, *, sandbox_root: Path = Path("sandbox")) -> OpenProjectResult:
+    target = resolve_project_target(project, sandbox_root=sandbox_root)
+    handoff_path = target / ".rv" / "agent_handoff.md"
+    short_handoff_path = target / ".rv" / "agent_handoff_short.md"
+    opened = open_project_in_editor(target)
+    return OpenProjectResult(
+        target=target,
+        opened=opened,
+        handoff_path=handoff_path,
+        short_handoff_path=short_handoff_path,
+    )
+
+
+def resolve_project_target(project: Path, *, sandbox_root: Path = Path("sandbox")) -> Path:
+    expanded = project.expanduser()
+    if expanded.exists():
+        target = expanded
+    elif len(expanded.parts) == 1:
+        target = sandbox_root / expanded
+    else:
+        target = expanded
+
+    if not target.exists():
+        raise FileNotFoundError(f"Project does not exist: {target}")
+    if not target.is_dir():
+        raise NotADirectoryError(f"Project is not a directory: {target}")
+    return target.resolve()
+
+
+def _path_check(name: str, path: Path, *, required: bool, kind: str) -> DoctorCheck:
+    if kind == "dir":
+        ok = path.is_dir()
+        expected = "directory"
+    elif kind == "file":
+        ok = path.is_file()
+        expected = "file"
+    else:
+        raise ValueError(f"Unsupported path check kind: {kind}")
+
+    return DoctorCheck(
+        name=name,
+        ok=ok,
+        required=required,
+        message=f"{expected} found: {path}" if ok else f"Missing {expected}: {path}",
+    )
+
+
+def _sandbox_check(path: Path) -> DoctorCheck:
+    if not path.exists():
+        return DoctorCheck(
+            name="sandbox",
+            ok=False,
+            required=True,
+            message=f"Sandbox directory does not exist: {path}",
+        )
+    if not path.is_dir():
+        return DoctorCheck(
+            name="sandbox",
+            ok=False,
+            required=True,
+            message=f"Sandbox path is not a directory: {path}",
+        )
+    writable = os.access(path, os.W_OK)
+    return DoctorCheck(
+        name="sandbox",
+        ok=writable,
+        required=True,
+        message=f"Sandbox directory is writable: {path}" if writable else f"Sandbox directory is not writable: {path}",
     )
 
 
@@ -151,6 +371,50 @@ def resolve_wiring_layer(templates_root: Path, wiring_id: str) -> TemplateLayer:
 
 def wiring_id(frontend_stack: str, backend_stack: str) -> str:
     return f"{frontend_stack}_{backend_stack}"
+
+
+def validate_init_options(options: InitProjectOptions) -> None:
+    conflicts: list[str] = []
+    if options.domain != NO_DOMAIN:
+        if _level_index(options.backend_stack, options.backend_level) < _level_index(options.backend_stack, "level_2"):
+            conflicts.append(
+                f"--backend-level {options.backend_level} cannot be combined with --domain {options.domain}; "
+                f"use --domain {NO_DOMAIN} or choose backend level_2+"
+            )
+        if _level_index(options.frontend_stack, options.frontend_level) < _level_index(options.frontend_stack, "level_2"):
+            conflicts.append(
+                f"--frontend-level {options.frontend_level} cannot be combined with --domain {options.domain}; "
+                f"use --domain {NO_DOMAIN} or choose frontend level_2+"
+            )
+    if options.database != NO_DATABASE and _level_index(options.backend_stack, options.backend_level) < _level_index(
+        options.backend_stack,
+        "level_3",
+    ):
+        conflicts.append(
+            f"--backend-level {options.backend_level} cannot be combined with --database {options.database}; "
+            f"use --database {NO_DATABASE} or choose backend level_3+"
+        )
+    if conflicts:
+        raise ValueError("Conflicting init options: " + " ".join(conflicts))
+
+
+def _level_index(stack: str, level: str) -> int:
+    try:
+        return LEVEL_ORDER[stack].index(level)
+    except (KeyError, ValueError) as exc:
+        raise ValueError(f"Unsupported level {level!r} for stack {stack!r}") from exc
+
+
+def selected_domain_overlays(domain: str) -> tuple[str, ...]:
+    if domain == NO_DOMAIN:
+        return ()
+    return (domain,)
+
+
+def selected_database_overlays(database: str) -> tuple[str, ...]:
+    if database == NO_DATABASE:
+        return ()
+    return (database,)
 
 
 def write_requirements(target: Path, dependencies: tuple[str, ...]) -> None:
@@ -181,34 +445,53 @@ def write_frontend_dependency_metadata(target: Path, frontend: ResolvedTemplate)
     )
 
 
-def launch_setup_terminal(target: Path) -> bool:
-    """Open a terminal that installs backend and frontend dependencies."""
+def open_project_in_editor(target: Path) -> bool:
+    """Open the generated project in a new VS Code window when the CLI is available."""
+
+    editor = shutil.which("code")
+    if editor is None:
+        return False
+
+    project_dir = str(target.resolve())
+    subprocess.Popen([editor, "-n", project_dir], cwd=project_dir)
+    return True
+
+
+def launch_dependency_setup(target: Path) -> bool:
+    """Install generated project dependencies in a background setup process."""
 
     if os.name != "nt":
         return False
 
     project_dir = str(target.resolve())
-    command = render_setup_terminal_command(Path(project_dir))
+    log_path = target / ".rv" / "setup.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_file = log_path.open("w", encoding="utf-8")
+    command = render_dependency_setup_command(Path(project_dir))
 
     subprocess.Popen(
         [
             "powershell.exe",
-            "-NoExit",
+            "-NoProfile",
             "-ExecutionPolicy",
             "Bypass",
             "-Command",
             command,
         ],
         cwd=project_dir,
-        creationflags=subprocess.CREATE_NEW_CONSOLE,
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
+        creationflags=subprocess.CREATE_NO_WINDOW,
     )
+    log_file.close()
     return True
 
 
-def render_setup_terminal_command(target: Path) -> str:
+def render_dependency_setup_command(target: Path) -> str:
     escaped_project_dir = str(target.resolve()).replace("'", "''")
     return (
         f"Set-Location -LiteralPath '{escaped_project_dir}'; "
+        "Write-Host '[setup] Project setup started'; "
         "Write-Host '[setup] Creating venv'; "
         "python -m venv venv; "
         "Write-Host '[setup] Activating venv'; "
@@ -217,11 +500,23 @@ def render_setup_terminal_command(target: Path) -> str:
         "Write-Host '[setup] Installing Python requirements into active venv'; "
         "python -m pip install -r requirements.txt; "
         "} "
+        "if (Test-Path backend\\package.json) { "
+        "Write-Host '[setup] Installing backend Node packages'; "
+        "Push-Location backend; npm install; Pop-Location; "
+        "} "
+        "if (Test-Path backend\\pom.xml) { "
+        "if (Get-Command mvn -ErrorAction SilentlyContinue) { "
+        "Write-Host '[setup] Resolving Maven dependencies'; "
+        "Push-Location backend; mvn dependency:go-offline; Pop-Location; "
+        "} else { "
+        "Write-Host '[setup] Maven not found on PATH; skipping Maven dependency prefetch'; "
+        "} "
+        "} "
         "if (Test-Path mobile\\package.json) { "
         "Write-Host '[setup] Installing frontend packages'; "
         "Push-Location mobile; npm install; Pop-Location; "
         "} "
-        "Write-Host '[setup] Ready. Python venv is active in this terminal and frontend packages are installed when package.json exists.'"
+        "Write-Host '[setup] Ready. Dependency setup complete.'"
     )
 
 
@@ -268,6 +563,60 @@ def write_agent_context(
             file_map_content=file_map_content,
         ),
         "agent_handoff_short.md": render_agent_handoff_short(options),
+    }
+
+    written: list[Path] = []
+    for filename, content in files.items():
+        path = rv_dir / filename
+        path.write_text(content, encoding="utf-8")
+        written.append(path)
+    written.extend(write_native_instruction_files(target, mentor_prompt, mentor_guardrails))
+    written.extend(task_files)
+    written.extend(progress_files)
+    return tuple(written)
+
+
+def copy_agent_support_files(agents_root: Path, target: Path) -> tuple[Path, ...]:
+    source = agents_root.resolve()
+    if not source.exists():
+        raise FileNotFoundError(f"Agent support directory does not exist: {source}")
+    if not source.is_dir():
+        raise NotADirectoryError(f"Agent support path is not a directory: {source}")
+
+    destination = (target / ".agents").resolve()
+    if source == destination:
+        return tuple(path for path in sorted(destination.rglob("*")) if path.is_file())
+
+    shutil.copytree(source, destination, dirs_exist_ok=True)
+    return tuple(path for path in sorted(destination.rglob("*")) if path.is_file())
+
+
+def write_import_agent_context(options: ImportProjectOptions, target: Path) -> tuple[Path, ...]:
+    rv_dir = target / ".rv"
+    rv_dir.mkdir(parents=True, exist_ok=True)
+
+    task_files = write_import_task_files(target)
+    progress_files = write_progress_files(target)
+    file_map = build_file_map(target)
+    task_path = target / ".rv" / "tasks" / "001_understand_repo.md"
+    agent_context = render_import_agent_context(target, file_map)
+    file_map_content = render_file_map(file_map)
+    task_content = task_path.read_text(encoding="utf-8")
+    mentor_prompt = read_mentor_prompt(options.mentor_prompt_path)
+    mentor_guardrails = read_mentor_guardrails(options.mentor_guardrails_path)
+    files = {
+        "project.json": render_import_project_metadata(target),
+        "agent_context.md": agent_context,
+        "file_map.md": file_map_content,
+        "agent_handoff.md": render_import_agent_handoff(
+            target=target,
+            mentor_prompt=mentor_prompt,
+            mentor_guardrails=mentor_guardrails,
+            agent_context=agent_context,
+            task_content=task_content,
+            file_map_content=file_map_content,
+        ),
+        "agent_handoff_short.md": render_import_agent_handoff_short(target),
     }
 
     written: list[Path] = []
@@ -330,7 +679,7 @@ def render_native_instruction_prompt(mentor_prompt: str, mentor_guardrails: str)
 
 
 def build_file_map(target: Path, *, limit: int = 48) -> tuple[str, ...]:
-    ignored_parts = {"venv", ".venv", "node_modules", "__pycache__", ".pytest_cache"}
+    ignored_parts = {"venv", ".venv", "node_modules", "__pycache__", ".pytest_cache", ".agents"}
     files: list[str] = []
     for path in sorted(target.rglob("*")):
         if not path.is_file():
@@ -387,12 +736,52 @@ Use this file as project context only. Generic operator behavior lives in `.agen
 """
 
 
+def render_import_agent_context(target: Path, file_map: tuple[str, ...]) -> str:
+    important_files = "\n".join(f"- {path}" for path in file_map[:24])
+    if not important_files:
+        important_files = "- No source files found yet."
+
+    return f"""# Project Agent Context
+
+Project: {target.name}
+Mode: imported existing project
+Project path: {target}
+
+Imported workflow folders:
+- .agents/
+- .rv/
+
+Important files:
+{important_files}
+
+This project was imported into the reverse-vibecoding workflow. Infer the stack, architecture, tests, and run commands from the repository itself before assigning implementation work.
+
+Use this file as project context only. Generic operator behavior lives in `.agents/global_prompt.md`, and per-response guardrails live in `.agents/global_guardrails.md`.
+"""
+
+
 def write_task_files(target: Path, options: InitProjectOptions) -> tuple[Path, ...]:
     tasks_dir = target / ".rv" / "tasks"
     tasks_dir.mkdir(parents=True, exist_ok=True)
     files = {
         "README.md": render_tasks_readme(),
         "001_understand_repo.md": render_initial_task(options),
+    }
+
+    written: list[Path] = []
+    for filename, content in files.items():
+        path = tasks_dir / filename
+        path.write_text(content, encoding="utf-8")
+        written.append(path)
+    return tuple(written)
+
+
+def write_import_task_files(target: Path) -> tuple[Path, ...]:
+    tasks_dir = target / ".rv" / "tasks"
+    tasks_dir.mkdir(parents=True, exist_ok=True)
+    files = {
+        "README.md": render_tasks_readme(),
+        "001_understand_repo.md": render_import_initial_task(target),
     }
 
     written: list[Path] = []
@@ -484,7 +873,7 @@ evidence_required:
   - "Short explanation of backend and mobile responsibilities."
   - "Notes from inspecting the key backend and mobile files."
 context:
-  - "Confirm the setup terminal completed successfully or run backend and frontend setup manually."
+  - "Confirm `.rv/setup.log` shows dependency setup completed successfully or run backend and frontend setup manually."
   - "Inspect the backend setup and identify what API tests are missing."
   - "Inspect the API route and repository boundaries."
   - "Inspect how the mobile app calls the backend."
@@ -506,11 +895,60 @@ files_to_inspect:
 Request: Inspect and summarize the generated {options.domain} project so the next implementation request is grounded in the repo.
 
 User should:
-1. Confirm the setup terminal completed successfully or run backend and frontend setup manually.
+1. Confirm `.rv/setup.log` shows dependency setup completed successfully or run backend and frontend setup manually.
 2. Inspect the backend setup and identify what API tests are missing.
 3. Inspect the API route and repository boundaries.
 4. Inspect how the mobile app calls the backend.
 5. Explain one missing test, edge case, or design improvement.
+
+Operator instruction:
+- Before each response, apply `.agents/global_guardrails.md`.
+- Do not edit project files or implement the task directly.
+- Inspect available files, diffs, and task/progress logs before asking the user for context.
+- Ask the user to explain repo understanding only when it is needed for review or cannot be inferred from available evidence.
+- You may explain abstract architecture concepts if that helps clarify the next request.
+- Collect evidence yourself when possible; ask for evidence only when you cannot inspect or run it directly.
+- When this task is complete, propose the next implementation request and add it under `.rv/tasks/`.
+- After this task is reviewed, add a matching progress entry under `.rv/progress/`.
+- Before updating `.rv/tasks/` or `.rv/progress/`, read the matching YAML schema in `.agents/schemas/`.
+"""
+
+
+def render_import_initial_task(target: Path) -> str:
+    return f"""---
+id: "001_understand_repo"
+title: "Understand the imported repo"
+status: active
+request: "Inspect and summarize the imported {target.name} project so the next implementation request is grounded in the repo."
+expected_behavior:
+  - "The user can identify the project's main responsibilities and runtime entry points."
+  - "The user can name one missing test, edge case, or design improvement."
+implementation_scope:
+  - "Inspect files only; do not change product code for this task."
+acceptance_criteria:
+  - "The user summarizes the project structure accurately."
+  - "The user identifies one concrete follow-up implementation target."
+evidence_required:
+  - "Short explanation of the project's main components."
+  - "Notes from inspecting key source, configuration, and test files."
+context:
+  - "Infer stack, test commands, and run commands from the imported repository."
+  - "Inspect README, package manifests, dependency files, entry points, and tests."
+  - "Explain one missing test, edge case, or design improvement."
+review_focus:
+  - "Repo understanding."
+  - "Architecture and runtime boundaries."
+  - "Missing test or edge-case identification."
+---
+
+# Task 001: Understand The Imported Repo
+
+Request: Inspect and summarize the imported {target.name} project so the next implementation request is grounded in the repo.
+
+User should:
+1. Identify the project's stack, entry points, and expected setup or test commands.
+2. Inspect the main source and test boundaries.
+3. Explain one missing test, edge case, or design improvement.
 
 Operator instruction:
 - Before each response, apply `.agents/global_guardrails.md`.
@@ -587,6 +1025,58 @@ Project path: sandbox/{options.name}
 """
 
 
+def render_import_agent_handoff(
+    *,
+    target: Path,
+    mentor_prompt: str,
+    mentor_guardrails: str,
+    agent_context: str,
+    task_content: str,
+    file_map_content: str,
+) -> str:
+    return f"""# Agent Handoff
+
+Read this file first and begin the reverse-vibecoding workflow immediately.
+
+Your first response should:
+
+1. Read `.agents/global_guardrails.md` and apply it before every response.
+2. Acknowledge the imported project context briefly.
+3. Inspect the current task, progress logs, repo state, and any user-provided context.
+4. Ask the user for missing context only when it cannot be inferred from files, diffs, commands, or prior logs.
+5. Use `.rv/tasks/001_understand_repo.md` as the active task.
+6. Update `.rv/tasks/` when assigning work and `.rv/progress/` after review to track what you asked for, what the user did, and what evidence was reviewed.
+7. Read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`.
+8. Read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
+
+Do not edit project files or implement the project yourself. If code must change, ask the user to implement it. You may explain abstract concepts and provide tiny illustrative snippets in chat when helpful.
+
+---
+
+{mentor_guardrails.strip()}
+
+---
+
+{mentor_prompt}
+
+---
+
+{agent_context.strip()}
+
+---
+
+{task_content.strip()}
+
+---
+
+{file_map_content.strip()}
+
+---
+
+Project path: {target}
+"""
+
+
 def render_agent_handoff_short(options: InitProjectOptions) -> str:
     return f"""# Short Agent Handoff
 
@@ -610,6 +1100,39 @@ Schemas: read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`, a
 
 Task tracking: read `.rv/tasks/001_understand_repo.md` next. You maintain future implementation requests in `.rv/tasks/` and completed work summaries in `.rv/progress/`; do not ask the user to maintain those logs.
 """
+
+
+def render_import_agent_handoff_short(target: Path) -> str:
+    return f"""# Short Agent Handoff
+
+Paste this into your IDE agent when context is limited.
+
+You are the operator/reviewer in a reverse-vibecoding workflow. The user implements all code changes. Do not edit project files or solve the project yourself; ask the user to implement.
+
+Project: {target.name}
+Mode: imported existing project
+Path: {target}
+
+Current task: understand and verify the imported repo. Start by inspecting `.rv/tasks/`, `.rv/progress/`, source files, diffs, and any user-provided context before asking for missing information.
+
+Guardrails: read `.agents/global_guardrails.md` first and apply it before every response. Do not edit project files or implement yourself.
+
+Code review: before evaluating user-written code, read `.agents/rubrics/engineering_review.md` and apply it.
+
+Schemas: read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`, and read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
+
+Task tracking: read `.rv/tasks/001_understand_repo.md` next. You maintain future implementation requests in `.rv/tasks/` and completed work summaries in `.rv/progress/`; do not ask the user to maintain those logs.
+"""
+
+
+def render_import_project_metadata(target: Path) -> str:
+    metadata = {
+        "name": target.name,
+        "mode": "imported",
+        "path": str(target),
+        "notes": "Imported by rev-vib import. Stack and run commands should be inferred from the repository.",
+    }
+    return json.dumps(metadata, indent=2, sort_keys=True) + "\n"
 
 
 def write_project_metadata(
