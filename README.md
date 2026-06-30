@@ -51,13 +51,6 @@ To wake an IDE agent after generation, paste the handoff prompt printed by `rev-
 rev-vib open my_project
 ```
 
-For lower-complexity projects, disable template layers that require higher levels:
-
-```bash
-rev-vib init level_1_project --backend-level level_1 --frontend-level level_1 --domain no_domain --database no_database
-rev-vib init level_2_project --backend-level level_2 --frontend-level level_2 --database no_database
-```
-
 To add the reverse-vibecoding workflow to an existing project:
 
 ```bash
