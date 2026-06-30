@@ -5,6 +5,7 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+tests/
 dist/
 build/
 *.egg-info/
@@ -22,5 +23,11 @@ yarn-error.log*
 .pnpm-store/
 
 reverse_vibe_coding_mvp_plan.md
+
+# Legacy spec-generator modules
+src/reverse_vibecoding/catalog.py
+src/reverse_vibecoding/generator.py
+src/reverse_vibecoding/models.py
+src/reverse_vibecoding/rendering.py
 
 sandbox/

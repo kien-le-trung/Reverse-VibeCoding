@@ -19,26 +19,6 @@ DEFAULT_FRONTEND_STACK = "react_native"
 NO_DOMAIN = "no_domain"
 NO_DATABASE = "no_database"
 
-DEFAULT_MENTOR_GUARDRAILS = """# Reverse VibeCoding Operator Guardrails
-
-Apply these guardrails before every response in a reverse-vibecoding project.
-
-- You are the operator/reviewer in a reverse-vibecoding workflow. The user implements all code changes.
-- Do not edit project files, run code-changing commands, or implement the task yourself.
-- You may explain abstract engineering concepts, desired behavior, tradeoffs, and why a change matters.
-- When code must change, ask the user to implement it.
-- If the user asks what to do next, give a small implementation, inspection, or verification request.
-- If the user asks for help, prefer requirements, hints, constraints, review comments, or a tiny illustrative snippet in chat.
-- If the user asks you to implement, refuse and restate that implementation belongs to the user.
-- Before evaluating user-written code, read `.agents/rubrics/engineering_review.md` and apply it.
-- Before creating or updating task files, read `.agents/schemas/task.schema.yaml`.
-- Before creating or updating progress files, read `.agents/schemas/progress.schema.yaml`.
-- You own workflow logging: create or update `.rv/tasks/` when assigning work, and `.rv/progress/` after review.
-- Do not ask the user to maintain task or progress logs. Ask only for missing facts or evidence you cannot inspect yourself, then record that information yourself.
-- After a task is reviewed, log what you asked the user to do, what the user did, reviewed evidence, acceptance status, and remaining gaps in `.rv/progress/`.
-"""
-
-
 @dataclass(frozen=True)
 class InitProjectOptions:
     name: str
@@ -221,7 +201,7 @@ def import_project(
     _progress(progress, "import", "Copying agent prompts, schemas, and rubrics")
     copied_agent_files = copy_agent_support_files(options.agents_root, target)
     _progress(progress, "import", "Writing .rv task and handoff files")
-    agent_files = write_import_agent_context(options, target)
+    agent_files = write_agent_context(options, target)
     _progress(progress, "import", "Import complete")
     return ImportProjectResult(target=target, agent_files=tuple((*copied_agent_files, *agent_files)))
 
@@ -526,11 +506,11 @@ def _progress(callback: Callable[[str], None] | None, step: str, message: str) -
 
 
 def write_agent_context(
-    options: InitProjectOptions,
+    options: InitProjectOptions | ImportProjectOptions,
     target: Path,
-    backend: ResolvedTemplate,
-    frontend: ResolvedTemplate,
-    compose_result: ComposeResult,
+    backend: ResolvedTemplate | None = None,
+    frontend: ResolvedTemplate | None = None,
+    compose_result: ComposeResult | None = None,
 ) -> tuple[Path, ...]:
     """Write project-specific agent context files under `.rv`.
 
@@ -546,24 +526,36 @@ def write_agent_context(
     progress_files = write_progress_files(target)
     file_map = build_file_map(target)
     task_path = target / ".rv" / "tasks" / "001_understand_repo.md"
-    agent_context = render_agent_context(options, backend, frontend, compose_result, file_map)
+    agent_context = render_agent_context(options, backend, frontend, compose_result, file_map, target=target)
     file_map_content = render_file_map(file_map)
     task_content = task_path.read_text(encoding="utf-8")
     mentor_prompt = read_mentor_prompt(options.mentor_prompt_path)
-    mentor_guardrails = read_mentor_guardrails(options.mentor_guardrails_path)
+    mentor_guardrails = options.mentor_guardrails_path.read_text(encoding="utf-8").strip()
     files = {
         "agent_context.md": agent_context,
         "file_map.md": file_map_content,
         "agent_handoff.md": render_agent_handoff(
             options=options,
+            target=target,
             mentor_prompt=mentor_prompt,
             mentor_guardrails=mentor_guardrails,
             agent_context=agent_context,
             task_content=task_content,
             file_map_content=file_map_content,
         ),
-        "agent_handoff_short.md": render_agent_handoff_short(options),
+        "agent_handoff_short.md": render_agent_handoff_short(options, target=target),
     }
+    if isinstance(options, ImportProjectOptions):
+        files["project.json"] = json.dumps(
+            {
+                "name": target.name,
+                "mode": "imported",
+                "path": str(target),
+                "notes": "Imported by rev-vib import. Stack and run commands should be inferred from the repository.",
+            },
+            indent=2,
+            sort_keys=True,
+        ) + "\n"
 
     written: list[Path] = []
     for filename, content in files.items():
@@ -591,45 +583,6 @@ def copy_agent_support_files(agents_root: Path, target: Path) -> tuple[Path, ...
     return tuple(path for path in sorted(destination.rglob("*")) if path.is_file())
 
 
-def write_import_agent_context(options: ImportProjectOptions, target: Path) -> tuple[Path, ...]:
-    rv_dir = target / ".rv"
-    rv_dir.mkdir(parents=True, exist_ok=True)
-
-    task_files = write_import_task_files(target)
-    progress_files = write_progress_files(target)
-    file_map = build_file_map(target)
-    task_path = target / ".rv" / "tasks" / "001_understand_repo.md"
-    agent_context = render_import_agent_context(target, file_map)
-    file_map_content = render_file_map(file_map)
-    task_content = task_path.read_text(encoding="utf-8")
-    mentor_prompt = read_mentor_prompt(options.mentor_prompt_path)
-    mentor_guardrails = read_mentor_guardrails(options.mentor_guardrails_path)
-    files = {
-        "project.json": render_import_project_metadata(target),
-        "agent_context.md": agent_context,
-        "file_map.md": file_map_content,
-        "agent_handoff.md": render_import_agent_handoff(
-            target=target,
-            mentor_prompt=mentor_prompt,
-            mentor_guardrails=mentor_guardrails,
-            agent_context=agent_context,
-            task_content=task_content,
-            file_map_content=file_map_content,
-        ),
-        "agent_handoff_short.md": render_import_agent_handoff_short(target),
-    }
-
-    written: list[Path] = []
-    for filename, content in files.items():
-        path = rv_dir / filename
-        path.write_text(content, encoding="utf-8")
-        written.append(path)
-    written.extend(write_native_instruction_files(target, mentor_prompt, mentor_guardrails))
-    written.extend(task_files)
-    written.extend(progress_files)
-    return tuple(written)
-
-
 def read_mentor_prompt(path: Path) -> str:
     if path.exists():
         return path.read_text(encoding="utf-8").strip()
@@ -637,12 +590,6 @@ def read_mentor_prompt(path: Path) -> str:
 
 You are the operator/reviewer in a reverse-vibecoding workflow. The user implements all code changes. Ask the user for implementation, collect evidence from files/diffs/commands when possible, and review the result. You own `.rv/tasks/` and `.rv/progress/` logging. Do not edit project files yourself.
 """.strip()
-
-
-def read_mentor_guardrails(path: Path) -> str:
-    if path.exists():
-        return path.read_text(encoding="utf-8").strip()
-    return DEFAULT_MENTOR_GUARDRAILS.strip()
 
 
 def write_native_instruction_files(target: Path, mentor_prompt: str, mentor_guardrails: str) -> tuple[Path, ...]:
@@ -700,13 +647,40 @@ def build_file_map(target: Path, *, limit: int = 48) -> tuple[str, ...]:
 
 
 def render_agent_context(
-    options: InitProjectOptions,
-    backend: ResolvedTemplate,
-    frontend: ResolvedTemplate,
-    compose_result: ComposeResult,
+    options: InitProjectOptions | ImportProjectOptions,
+    backend: ResolvedTemplate | None,
+    frontend: ResolvedTemplate | None,
+    compose_result: ComposeResult | None,
     file_map: tuple[str, ...],
+    *,
+    target: Path,
 ) -> str:
     important_files = "\n".join(f"- {path}" for path in file_map[:24])
+    if not important_files:
+        important_files = "- No source files found yet."
+
+    if isinstance(options, ImportProjectOptions):
+        return f"""# Project Agent Context
+
+Project: {target.name}
+Mode: imported existing project
+Project path: {target}
+
+Imported workflow folders:
+- .agents/
+- .rv/
+
+Important files:
+{important_files}
+
+This project was imported into the reverse-vibecoding workflow. Infer the stack, architecture, tests, and run commands from the repository itself before assigning implementation work.
+
+Use this file as project context only. Generic operator behavior lives in `.agents/global_prompt.md`, and per-response guardrails live in `.agents/global_guardrails.md`.
+"""
+
+    if backend is None or frontend is None or compose_result is None:
+        raise ValueError("Generated project context requires backend, frontend, and compose_result")
+
     layers = "\n".join(f"- {layer}" for layer in compose_result.applied_layers)
     checks = "\n".join(f"- {check}" for check in dict.fromkeys((*backend.checks, *frontend.checks)))
 
@@ -736,52 +710,12 @@ Use this file as project context only. Generic operator behavior lives in `.agen
 """
 
 
-def render_import_agent_context(target: Path, file_map: tuple[str, ...]) -> str:
-    important_files = "\n".join(f"- {path}" for path in file_map[:24])
-    if not important_files:
-        important_files = "- No source files found yet."
-
-    return f"""# Project Agent Context
-
-Project: {target.name}
-Mode: imported existing project
-Project path: {target}
-
-Imported workflow folders:
-- .agents/
-- .rv/
-
-Important files:
-{important_files}
-
-This project was imported into the reverse-vibecoding workflow. Infer the stack, architecture, tests, and run commands from the repository itself before assigning implementation work.
-
-Use this file as project context only. Generic operator behavior lives in `.agents/global_prompt.md`, and per-response guardrails live in `.agents/global_guardrails.md`.
-"""
-
-
-def write_task_files(target: Path, options: InitProjectOptions) -> tuple[Path, ...]:
+def write_task_files(target: Path, options: InitProjectOptions | ImportProjectOptions) -> tuple[Path, ...]:
     tasks_dir = target / ".rv" / "tasks"
     tasks_dir.mkdir(parents=True, exist_ok=True)
     files = {
         "README.md": render_tasks_readme(),
-        "001_understand_repo.md": render_initial_task(options),
-    }
-
-    written: list[Path] = []
-    for filename, content in files.items():
-        path = tasks_dir / filename
-        path.write_text(content, encoding="utf-8")
-        written.append(path)
-    return tuple(written)
-
-
-def write_import_task_files(target: Path) -> tuple[Path, ...]:
-    tasks_dir = target / ".rv" / "tasks"
-    tasks_dir.mkdir(parents=True, exist_ok=True)
-    files = {
-        "README.md": render_tasks_readme(),
-        "001_understand_repo.md": render_import_initial_task(target),
+        "001_understand_repo.md": render_initial_task(options, target=target),
     }
 
     written: list[Path] = []
@@ -855,7 +789,55 @@ Each progress entry should include:
 """
 
 
-def render_initial_task(options: InitProjectOptions) -> str:
+def render_initial_task(options: InitProjectOptions | ImportProjectOptions, *, target: Path) -> str:
+    if isinstance(options, ImportProjectOptions):
+        return f"""---
+id: "001_understand_repo"
+title: "Understand the imported repo"
+status: active
+request: "Inspect and summarize the imported {target.name} project so the next implementation request is grounded in the repo."
+expected_behavior:
+  - "The user can identify the project's main responsibilities and runtime entry points."
+  - "The user can name one missing test, edge case, or design improvement."
+implementation_scope:
+  - "Inspect files only; do not change product code for this task."
+acceptance_criteria:
+  - "The user summarizes the project structure accurately."
+  - "The user identifies one concrete follow-up implementation target."
+evidence_required:
+  - "Short explanation of the project's main components."
+  - "Notes from inspecting key source, configuration, and test files."
+context:
+  - "Infer stack, test commands, and run commands from the imported repository."
+  - "Inspect README, package manifests, dependency files, entry points, and tests."
+  - "Explain one missing test, edge case, or design improvement."
+review_focus:
+  - "Repo understanding."
+  - "Architecture and runtime boundaries."
+  - "Missing test or edge-case identification."
+---
+
+# Task 001: Understand The Imported Repo
+
+Request: Inspect and summarize the imported {target.name} project so the next implementation request is grounded in the repo.
+
+User should:
+1. Identify the project's stack, entry points, and expected setup or test commands.
+2. Inspect the main source and test boundaries.
+3. Explain one missing test, edge case, or design improvement.
+
+Operator instruction:
+- Before each response, apply `.agents/global_guardrails.md`.
+- Do not edit project files or implement the task directly.
+- Inspect available files, diffs, and task/progress logs before asking the user for context.
+- Ask the user to explain repo understanding only when it is needed for review or cannot be inferred from available evidence.
+- You may explain abstract architecture concepts if that helps clarify the next request.
+- Collect evidence yourself when possible; ask for evidence only when you cannot inspect or run it directly.
+- When this task is complete, propose the next implementation request and add it under `.rv/tasks/`.
+- After this task is reviewed, add a matching progress entry under `.rv/progress/`.
+- Before updating `.rv/tasks/` or `.rv/progress/`, read the matching YAML schema in `.agents/schemas/`.
+"""
+
     return f"""---
 id: "001_understand_repo"
 title: "Understand the repo"
@@ -914,55 +896,6 @@ Operator instruction:
 """
 
 
-def render_import_initial_task(target: Path) -> str:
-    return f"""---
-id: "001_understand_repo"
-title: "Understand the imported repo"
-status: active
-request: "Inspect and summarize the imported {target.name} project so the next implementation request is grounded in the repo."
-expected_behavior:
-  - "The user can identify the project's main responsibilities and runtime entry points."
-  - "The user can name one missing test, edge case, or design improvement."
-implementation_scope:
-  - "Inspect files only; do not change product code for this task."
-acceptance_criteria:
-  - "The user summarizes the project structure accurately."
-  - "The user identifies one concrete follow-up implementation target."
-evidence_required:
-  - "Short explanation of the project's main components."
-  - "Notes from inspecting key source, configuration, and test files."
-context:
-  - "Infer stack, test commands, and run commands from the imported repository."
-  - "Inspect README, package manifests, dependency files, entry points, and tests."
-  - "Explain one missing test, edge case, or design improvement."
-review_focus:
-  - "Repo understanding."
-  - "Architecture and runtime boundaries."
-  - "Missing test or edge-case identification."
----
-
-# Task 001: Understand The Imported Repo
-
-Request: Inspect and summarize the imported {target.name} project so the next implementation request is grounded in the repo.
-
-User should:
-1. Identify the project's stack, entry points, and expected setup or test commands.
-2. Inspect the main source and test boundaries.
-3. Explain one missing test, edge case, or design improvement.
-
-Operator instruction:
-- Before each response, apply `.agents/global_guardrails.md`.
-- Do not edit project files or implement the task directly.
-- Inspect available files, diffs, and task/progress logs before asking the user for context.
-- Ask the user to explain repo understanding only when it is needed for review or cannot be inferred from available evidence.
-- You may explain abstract architecture concepts if that helps clarify the next request.
-- Collect evidence yourself when possible; ask for evidence only when you cannot inspect or run it directly.
-- When this task is complete, propose the next implementation request and add it under `.rv/tasks/`.
-- After this task is reviewed, add a matching progress entry under `.rv/progress/`.
-- Before updating `.rv/tasks/` or `.rv/progress/`, read the matching YAML schema in `.agents/schemas/`.
-"""
-
-
 def render_file_map(file_map: tuple[str, ...]) -> str:
     entries = "\n".join(f"- {path}" for path in file_map)
     return f"""# File Map
@@ -975,58 +908,7 @@ This is a compact map of generated project files. Inspect files on demand instea
 
 def render_agent_handoff(
     *,
-    options: InitProjectOptions,
-    mentor_prompt: str,
-    mentor_guardrails: str,
-    agent_context: str,
-    task_content: str,
-    file_map_content: str,
-) -> str:
-    return f"""# Agent Handoff
-
-Read this file first and begin the reverse-vibecoding workflow immediately.
-
-Your first response should:
-
-1. Read `.agents/global_guardrails.md` and apply it before every response.
-2. Acknowledge the project context briefly.
-3. Inspect the current task, progress logs, repo state, and any user-provided context.
-4. Ask the user for missing context only when it cannot be inferred from files, diffs, commands, or prior logs.
-5. Use `.rv/tasks/001_understand_repo.md` as the active task.
-6. Update `.rv/tasks/` when assigning work and `.rv/progress/` after review to track what you asked for, what the user did, and what evidence was reviewed.
-7. Read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`.
-8. Read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
-
-Do not edit project files or implement the project yourself. If code must change, ask the user to implement it. You may explain abstract concepts and provide tiny illustrative snippets in chat when helpful.
-
----
-
-{mentor_guardrails.strip()}
-
----
-
-{mentor_prompt}
-
----
-
-{agent_context.strip()}
-
----
-
-{task_content.strip()}
-
----
-
-{file_map_content.strip()}
-
----
-
-Project path: sandbox/{options.name}
-"""
-
-
-def render_import_agent_handoff(
-    *,
+    options: InitProjectOptions | ImportProjectOptions,
     target: Path,
     mentor_prompt: str,
     mentor_guardrails: str,
@@ -1034,6 +916,11 @@ def render_import_agent_handoff(
     task_content: str,
     file_map_content: str,
 ) -> str:
+    context_line = "Acknowledge the imported project context briefly." if isinstance(
+        options,
+        ImportProjectOptions,
+    ) else "Acknowledge the project context briefly."
+    project_path = str(target) if isinstance(options, ImportProjectOptions) else f"sandbox/{options.name}"
     return f"""# Agent Handoff
 
 Read this file first and begin the reverse-vibecoding workflow immediately.
@@ -1041,7 +928,7 @@ Read this file first and begin the reverse-vibecoding workflow immediately.
 Your first response should:
 
 1. Read `.agents/global_guardrails.md` and apply it before every response.
-2. Acknowledge the imported project context briefly.
+2. {context_line}
 3. Inspect the current task, progress logs, repo state, and any user-provided context.
 4. Ask the user for missing context only when it cannot be inferred from files, diffs, commands, or prior logs.
 5. Use `.rv/tasks/001_understand_repo.md` as the active task.
@@ -1073,47 +960,33 @@ Do not edit project files or implement the project yourself. If code must change
 
 ---
 
-Project path: {target}
+Project path: {project_path}
 """
 
 
-def render_agent_handoff_short(options: InitProjectOptions) -> str:
-    return f"""# Short Agent Handoff
-
-Paste this into your IDE agent when context is limited.
-
-You are the operator/reviewer in a reverse-vibecoding workflow. The user implements all code changes. Do not edit project files or solve the project yourself; ask the user to implement.
-
-Project: {options.name}
+def render_agent_handoff_short(options: InitProjectOptions | ImportProjectOptions, *, target: Path) -> str:
+    if isinstance(options, ImportProjectOptions):
+        project_details = f"""Project: {target.name}
+Mode: imported existing project
+Path: {target}"""
+        current_task = "understand and verify the imported repo"
+    else:
+        project_details = f"""Project: {options.name}
 Domain: {options.domain}
 Backend: {options.backend_stack} {options.backend_level}
 Frontend: {options.frontend_stack} {options.frontend_level}
-Database: {options.database}
+Database: {options.database}"""
+        current_task = "understand and verify the generated app"
 
-Current task: understand and verify the generated app. Start by inspecting `.rv/tasks/`, `.rv/progress/`, source files, diffs, and any user-provided context before asking for missing information.
-
-Guardrails: read `.agents/global_guardrails.md` first and apply it before every response. Do not edit project files or implement yourself.
-
-Code review: before evaluating user-written code, read `.agents/rubrics/engineering_review.md` and apply it.
-
-Schemas: read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`, and read `.agents/schemas/progress.schema.yaml` before updating `.rv/progress/`.
-
-Task tracking: read `.rv/tasks/001_understand_repo.md` next. You maintain future implementation requests in `.rv/tasks/` and completed work summaries in `.rv/progress/`; do not ask the user to maintain those logs.
-"""
-
-
-def render_import_agent_handoff_short(target: Path) -> str:
     return f"""# Short Agent Handoff
 
 Paste this into your IDE agent when context is limited.
 
 You are the operator/reviewer in a reverse-vibecoding workflow. The user implements all code changes. Do not edit project files or solve the project yourself; ask the user to implement.
 
-Project: {target.name}
-Mode: imported existing project
-Path: {target}
+{project_details}
 
-Current task: understand and verify the imported repo. Start by inspecting `.rv/tasks/`, `.rv/progress/`, source files, diffs, and any user-provided context before asking for missing information.
+Current task: {current_task}. Start by inspecting `.rv/tasks/`, `.rv/progress/`, source files, diffs, and any user-provided context before asking for missing information.
 
 Guardrails: read `.agents/global_guardrails.md` first and apply it before every response. Do not edit project files or implement yourself.
 
@@ -1123,16 +996,6 @@ Schemas: read `.agents/schemas/task.schema.yaml` before updating `.rv/tasks/`, a
 
 Task tracking: read `.rv/tasks/001_understand_repo.md` next. You maintain future implementation requests in `.rv/tasks/` and completed work summaries in `.rv/progress/`; do not ask the user to maintain those logs.
 """
-
-
-def render_import_project_metadata(target: Path) -> str:
-    metadata = {
-        "name": target.name,
-        "mode": "imported",
-        "path": str(target),
-        "notes": "Imported by rev-vib import. Stack and run commands should be inferred from the repository.",
-    }
-    return json.dumps(metadata, indent=2, sort_keys=True) + "\n"
 
 
 def write_project_metadata(

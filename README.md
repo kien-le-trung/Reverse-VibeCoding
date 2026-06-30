@@ -21,6 +21,12 @@ Install the generator in editable mode:
 python -m pip install -e .
 ```
 
+Install the generator with test tooling:
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
 Run the test suite:
 
 ```bash
@@ -28,6 +34,21 @@ python -m unittest discover -s . -p "test*.py"
 ```
 
 ## CLI
+
+The package installs one command:
+
+```bash
+rev-vib --help
+```
+
+Available commands:
+
+```text
+init    Generate a new practice project under the sandbox root.
+import  Install reverse-vibecoding agent files into an existing project.
+doctor  Check local rev-vib environment readiness.
+open    Open a generated or imported project in VS Code.
+```
 
 Generate a default sandbox project:
 
@@ -74,15 +95,34 @@ name                              Project folder name under the sandbox root
 --no-bugs                         Force a clean repo even if bug options are present
 ```
 
+Supported option values are also printed directly by:
+
+```bash
+rev-vib init --help
+```
+
 Examples:
 
 ```bash
 rev-vib init my_project --backend-stack django --frontend-stack react
 rev-vib init my_project --backend-stack flask --frontend-stack vue --backend-level level_2
 rev-vib init my_project --backend-stack spring_boot --frontend-stack angular --no-setup
+rev-vib init level_1_project --backend-level level_1 --frontend-level level_1 --domain no_domain --database no_database
+rev-vib init level_2_project --backend-level level_2 --frontend-level level_2 --database no_database
 ```
 
 Use `--force` only when you intentionally want to replace an existing generated project.
+
+### Init Option Constraints
+
+Some template layers intentionally depend on higher completeness levels:
+
+- Use `--domain no_domain` for level 1 projects.
+- Use `--database no_database` for backend levels 1 and 2.
+- Domain overlays require both backend and frontend level 2 or higher.
+- Database overlays require backend level 3 or higher.
+
+If conflicting flags are passed, `rev-vib init` exits with a message that points out the specific mismatch and suggests the matching `no_domain` or `no_database` option.
 
 ## Import Existing Projects
 
@@ -92,7 +132,16 @@ Install the reverse-vibecoding agent workflow into an existing project:
 rev-vib import C:\absolute\path\to\project
 ```
 
-The import target must be an absolute path to an existing directory. The command copies `.agents/` into the target project, creates `.rv/` task/progress/handoff files, and writes native agent instruction files for Codex, Claude, and Copilot:
+The import target must be an absolute path to an existing directory. The command copies `.agents/` into the target project, creates `.rv/` task/progress/handoff files, and writes native agent instruction files for Codex, Claude, and Copilot.
+
+Options:
+
+```text
+absolute_path_to_project          Absolute path to an existing project directory
+--agents-root PATH                Agent support directory to copy. Default: .agents
+```
+
+Files written or refreshed:
 
 ```text
 <project>/.agents/global_prompt.md
@@ -139,6 +188,14 @@ mvn
 
 Missing required checks exit with a nonzero status. Missing optional tools are reported as warnings.
 
+Options:
+
+```text
+--agents-root PATH                Agent support directory to check. Default: .agents
+--templates-root PATH             Template root directory to check. Default: templates
+--sandbox-root PATH               Sandbox root directory to check. Default: sandbox
+```
+
 ## Open Projects
 
 Open a generated or imported project in VS Code and print the handoff prompt:
@@ -149,6 +206,13 @@ rev-vib open C:\absolute\path\to\project
 ```
 
 When the argument is a single project name, `rev-vib open` resolves it under `sandbox/`. Use `--sandbox-root` to point at another generated-project root.
+
+Options:
+
+```text
+project                           Sandbox project name or path to a generated/imported project
+--sandbox-root PATH               Sandbox root used when project is a name. Default: sandbox
+```
 
 ## Supported Stacks
 
