@@ -1,9 +1,9 @@
 # Reverse Vibe Coding
 
 Reverse Vibe Coding is a role-reversal workflow for practicing with coding agents.
-The AI acts as the operator/reviewer with product intent and review standards; the user implements all code changes.
+The AI acts as the operator/reviewer with product intent and review standards; the user implements all code changes. It is intended to be a lightweight agent-wrapper and a simple project composer intended for learning, developed as a sidequest when I was learning SWE :)
 
-This repository contains the project generator, reusable starter templates, reverse-vibecoding prompts, and tests for the generation system.
+This repository contains the project generator, reusable starter templates, reverse-vibecoding prompts, and tests for the generation system. Developed during time constraints, it is by no means polished, so recommendations are appreciated.
 
 ## Repository Layout
 
@@ -15,22 +15,53 @@ This repository contains the project generator, reusable starter templates, reve
 
 ## Development
 
+Besides the python packages, please ensure you have node.js if you intend to work with React, React Native, Angular; and JDK if you intend to work with Spring Boot.
+
 Install the generator in editable mode:
 
 ```bash
 python -m pip install -e .
 ```
 
-Install the generator with test tooling:
-
-```bash
-python -m pip install -e ".[dev]"
-```
-
 Run the test suite:
 
 ```bash
 python -m unittest discover -s . -p "test*.py"
+```
+
+## Quick Start
+
+From the repository root:
+
+```bash
+python -m pip install -e .
+rev-vib doctor
+rev-vib init my_project
+```
+
+This creates `sandbox/my_project/`, opens it in a new VS Code window when the `code` CLI is available, and starts dependency installation in the background on Windows. Setup progress is written to:
+
+```text
+sandbox/my_project/.rv/setup.log
+```
+
+To wake an IDE agent after generation, paste the handoff prompt printed by `rev-vib init`, or run:
+
+```bash
+rev-vib open my_project
+```
+
+For lower-complexity projects, disable template layers that require higher levels:
+
+```bash
+rev-vib init level_1_project --backend-level level_1 --frontend-level level_1 --domain no_domain --database no_database
+rev-vib init level_2_project --backend-level level_2 --frontend-level level_2 --database no_database
+```
+
+To add the reverse-vibecoding workflow to an existing project:
+
+```bash
+rev-vib import C:\absolute\path\to\project
 ```
 
 ## CLI
@@ -45,7 +76,7 @@ Available commands:
 
 ```text
 init    Generate a new practice project under the sandbox root.
-import  Install reverse-vibecoding agent files into an existing project.
+import  Install reverse-vibecoding agent prompts into an existing project
 doctor  Check local rev-vib environment readiness.
 open    Open a generated or imported project in VS Code.
 ```
@@ -68,8 +99,8 @@ The default stack is:
 - frontend: `react_native`
 - database: `sqlite`
 - domain: `todo_app`
-- backend level: `level_3`
-- frontend level: `level_3`
+- backend level: `level_3` (levels explained below)
+- frontend level: `level_3` (levels explained below)
 - bugs: none
 
 ## Init Flags
@@ -251,10 +282,12 @@ Use `--database no_database` for lower-complexity projects that should not apply
 
 Completeness levels:
 
-- `level_1`
-- `level_2`
-- `level_3`
-- `level_4`
+- `level_1`: Minimal starter. Generates the thinnest backend/frontend skeleton for reading, wiring, and first implementation practice. Use `--domain no_domain --database no_database`.
+- `level_2`: Basic product shape. Adds more app structure and can use a domain overlay, but should still avoid persistence overlays. Use `--database no_database`.
+- `level_3`: Default full practice app. Adds domain behavior, backend persistence, frontend API integration, and enough structure for realistic feature and bug-fix work.
+- `level_4`: More complete professional scaffold. Adds the most opinionated structure and setup for advanced practice, larger review surfaces, and stack-specific conventions.
+
+Domain overlays require both backend and frontend level 2 or higher. Database overlays require backend level 3 or higher.
 
 ## Setup Behavior
 
