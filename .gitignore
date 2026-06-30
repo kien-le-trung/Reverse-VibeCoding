@@ -31,3 +31,5 @@ src/reverse_vibecoding/models.py
 src/reverse_vibecoding/rendering.py
 
 sandbox/
+
+reverse_vibe_coding_mvp_plan.md
